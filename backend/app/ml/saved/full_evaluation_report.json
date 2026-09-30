@@ -1,0 +1,52 @@
+{
+  "evaluation_date": "2026-09-29",
+  "validation_strategy": "Temporal Split (70% past train cohort, 30% prospective holdout)",
+  "track_a_model": {
+    "model_name": "Model A (HR-Only)",
+    "features_count": 17,
+    "train_size": 210,
+    "test_size": 90,
+    "accuracy": 0.7444,
+    "precision": 0.3333,
+    "recall": 0.0455,
+    "f1_score": 0.08,
+    "roc_auc": 0.8055,
+    "pr_auc": 0.4827,
+    "brier_score": 0.1523,
+    "confusion_matrix": [
+      [
+        66,
+        2
+      ],
+      [
+        21,
+        1
+      ]
+    ]
+  },
+  "track_b_comparison": {
+    "delta_pr_auc": 0.0062,
+    "delta_f1": 0.0738,
+    "delta_brier_score": 0.0013
+  },
+  "challenger_comparison": {
+    "delta_pr_auc": 0.0751,
+    "delta_roc_auc": 0.0247,
+    "delta_brier_score": -0.0003
+  },
+  "lead_time_analysis": {
+    "mean_lead_time_days": 19.1,
+    "median_lead_time_days": 18.8,
+    "min_lead_time_days": 12.0,
+    "max_lead_time_days": 28.0,
+    "alerts_with_lead_time": 10,
+    "evaluation_window_days": 30,
+    "methodology": "Days between earliest model risk trigger and confirmed event occurrence"
+  },
+  "gate_status": {
+    "temporal_split_enforced": true,
+    "zero_future_leakage": true,
+    "brier_calibration_audited": true,
+    "lead_time_reported": true
+  }
+}

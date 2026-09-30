@@ -1,0 +1,92 @@
+/**
+ * PRAHARI Design System Styles
+ * Clean Defence + Modern Enterprise: White + Olive Green Theme
+ */
+
+:root {
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --olive: #385E31;
+  --olive-dark: #243D20;
+  --olive-light: #4D7A45;
+  --olive-soft: #EFF5EE;
+  --text-primary: #1C281A;
+  --text-secondary: #465444;
+  --text-muted: #728070;
+  --border: #E1E8DF;
+  --low: #2E7D32;
+  --med: #E65100;
+  --high: #C62828;
+}
+
+/* ─── Card Component ──────────────────────────── */
+.prahari-card,
+.card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E1E8DF;
+  box-shadow: 0 1px 3px 0 rgba(28, 40, 26, 0.05), 0 1px 2px 0 rgba(28, 40, 26, 0.03);
+  transition: all 0.2s ease;
+}
+
+.prahari-card:hover,
+.card:hover {
+  box-shadow: 0 4px 14px 0 rgba(28, 40, 26, 0.08);
+  border-color: #D2DED0;
+}
+
+/* ─── Status Pill Helpers ─────────────────────── */
+.status-low {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.status-med {
+  background: #FFF3E0;
+  color: #E65100;
+  border: 1px solid #FFCC80;
+}
+
+.status-high {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #EF9A9A;
+}
+
+.status-stable {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.status-watch {
+  background: #FFF3E0;
+  color: #E65100;
+  border: 1px solid #FFCC80;
+}
+
+.status-attention {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #EF9A9A;
+}
+
+/* ─── Animations ─────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

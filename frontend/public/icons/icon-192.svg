@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#243D20" />
+      <stop offset="100%" stop-color="#385E31" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4D7A45" />
+      <stop offset="100%" stop-color="#2E4F28" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#bgGrad)" />
+  <!-- Outer Gold Ring -->
+  <circle cx="96" cy="96" r="76" fill="none" stroke="#F5A623" stroke-width="2.5" opacity="0.4" />
+  <!-- Shield Outline -->
+  <path d="M96 36 L138 52 C138 100 114 136 96 148 C78 136 54 100 54 52 Z" fill="url(#shieldGrad)" stroke="#FFFFFF" stroke-width="3" />
+  <!-- Star / Compass in Center -->
+  <path d="M96 64 L102 86 L124 96 L102 106 L96 128 L90 106 L68 96 L90 86 Z" fill="#FFFFFF" />
+  <!-- Center Accent Dot -->
+  <circle cx="96" cy="96" r="4" fill="#F5A623" />
+</svg>

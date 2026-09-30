@@ -1,0 +1,56 @@
+name: Build SWASTI Mobile APKs
+
+on:
+  push:
+    branches: [ "main", "deploy/*" ]
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Server URL for the APK to connect to'
+        required: false
+        default: 'https://swasti.up.railway.app'
+
+jobs:
+  build-apks:
+    name: Build Unified & Multi-Role APKs (Excluding Admin)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Gradle Wrapper
+        working-directory: mobile/android
+        run: |
+          gradle wrapper --gradle-version 8.4 || true
+          chmod +x gradlew || true
+
+      - name: Build All Role APKs
+        working-directory: mobile/android
+        run: |
+          TARGET_URL="${{ inputs.server_url || 'https://swasti.up.railway.app' }}"
+          ./gradlew assemblePersonnelDebug assembleCommanderDebug assembleWelfareDebug assembleUnifiedDebug -PSERVER_URL="$TARGET_URL" --stacktrace
+
+      - name: Organize APK Artifacts
+        run: |
+          mkdir -p dist/apks
+          cp mobile/android/app/build/outputs/apk/personnel/debug/*.apk dist/apks/swasti-personnel.apk || true
+          cp mobile/android/app/build/outputs/apk/commander/debug/*.apk dist/apks/swasti-commander.apk || true
+          cp mobile/android/app/build/outputs/apk/welfare/debug/*.apk dist/apks/swasti-welfare.apk || true
+          cp mobile/android/app/build/outputs/apk/unified/debug/*.apk dist/apks/swasti-unified.apk || true
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: swasti-mobile-apks
+          path: dist/apks/*.apk
+          retention-days: 30

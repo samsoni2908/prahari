@@ -1,0 +1,85 @@
+plugins {
+    id 'com.android.application'
+}
+
+def getCleanServerUrl(suffix) {
+    def raw = (project.findProperty("SERVER_URL") ?: System.getenv("SERVER_URL") ?: "https://prahari.up.railway.app").toString()
+    def clean = raw.replaceAll('[\"\'\\s]', '').trim()
+    while (clean.endsWith('/')) {
+        clean = clean.substring(0, clean.length() - 1)
+    }
+    if (clean.endsWith('/login') || clean.endsWith('/personnel') || clean.endsWith('/commander') || clean.endsWith('/welfare')) {
+        return clean
+    }
+    return clean + suffix
+}
+
+android {
+    namespace 'org.prahari.mobile'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionCode 200
+        versionName "2.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/login')}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    flavorDimensions "role"
+    productFlavors {
+        unified {
+            dimension "role"
+            applicationId "org.prahari.app"
+            resValue "string", "app_name", "SWASTI"
+            buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/login')}\""
+        }
+        personnel {
+            dimension "role"
+            applicationId "org.prahari.personnel"
+            resValue "string", "app_name", "SWASTI Personnel"
+            buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/personnel')}\""
+        }
+        commander {
+            dimension "role"
+            applicationId "org.prahari.commander"
+            resValue "string", "app_name", "SWASTI Commander"
+            buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/commander')}\""
+        }
+        welfare {
+            dimension "role"
+            applicationId "org.prahari.welfare"
+            resValue "string", "app_name", "SWASTI Welfare"
+            buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/welfare')}\""
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+}

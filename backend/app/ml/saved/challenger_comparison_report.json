@@ -1,0 +1,49 @@
+{
+  "baseline_model": {
+    "model_name": "Model A (Baseline LogisticRegression)",
+    "accuracy": 0.8111,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "roc_auc": 0.5576,
+    "pr_auc": 0.2505,
+    "brier_score": 0.1525,
+    "confusion_matrix": [
+      [
+        73,
+        0
+      ],
+      [
+        17,
+        0
+      ]
+    ]
+  },
+  "challenger_model": {
+    "model_name": "Challenger (HistGradientBoosting)",
+    "accuracy": 0.8111,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "roc_auc": 0.5624,
+    "pr_auc": 0.2944,
+    "brier_score": 0.1523,
+    "confusion_matrix": [
+      [
+        73,
+        0
+      ],
+      [
+        17,
+        0
+      ]
+    ]
+  },
+  "deltas": {
+    "delta_pr_auc": 0.0439,
+    "delta_roc_auc": 0.0048,
+    "delta_brier_score": -0.0002
+  },
+  "selected_winner": "Challenger (HistGradientBoosting)",
+  "selection_criteria": "Ranked by PR-AUC, Brier calibration, and defense-grade explainability."
+}

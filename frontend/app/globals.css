@@ -1,0 +1,340 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ─── Base Reset: White + Olive Green Theme ────────────────── */
+:root {
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --olive: #385E31;
+  --olive-dark: #243D20;
+  --olive-light: #4D7A45;
+  --olive-soft: #EFF5EE;
+  --text-primary: #1C281A;
+  --text-secondary: #465444;
+  --text-muted: #728070;
+  --border: #E1E8DF;
+  --low: #2E7D32;
+  --med: #E65100;
+  --high: #C62828;
+}
+
+html { font-size: 16px; }
+
+body {
+  color: var(--text-primary);
+  background: var(--bg);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Card Component ──────────────────────────── */
+.card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E1E8DF;
+  box-shadow: 0 1px 3px 0 rgba(28, 40, 26, 0.05), 0 1px 2px 0 rgba(28, 40, 26, 0.03);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 14px 0 rgba(28, 40, 26, 0.08);
+  border-color: #D2DED0;
+}
+
+/* ─── Status Pill Helpers ─────────────────────── */
+.status-low {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.status-med {
+  background: #FFF3E0;
+  color: #E65100;
+  border: 1px solid #FFCC80;
+}
+
+.status-high {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #EF9A9A;
+}
+
+.status-stable {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.status-watch {
+  background: #FFF3E0;
+  color: #E65100;
+  border: 1px solid #FFCC80;
+}
+
+.status-attention {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #EF9A9A;
+}
+
+/* ─── Button Variants ─────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: #385E31;
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.btn-primary:hover {
+  background: #2D4C27;
+  box-shadow: 0 4px 12px rgba(45, 76, 39, 0.25);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: #EFF5EE;
+  color: #2D4C27;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1.5px solid #CDE0CB;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-secondary:hover {
+  background: #E2ECE0;
+  border-color: #385E31;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: #FFEBEE;
+  color: #C62828;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1.5px solid #EF9A9A;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-danger:hover {
+  background: #FFCDD2;
+}
+
+/* ─── Section Title ───────────────────────────── */
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1C281A;
+  margin-bottom: 4px;
+}
+
+.section-subtitle {
+  font-size: 12px;
+  color: #728070;
+}
+
+/* ─── Progress Slider Styling ─────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E1E8DF;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #385E31;
+  cursor: pointer;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 4px rgba(45, 76, 39, 0.25);
+}
+
+input[type="range"].accent-green::-webkit-slider-thumb {
+  background: #2E7D32;
+}
+
+input[type="range"].accent-amber::-webkit-slider-thumb {
+  background: #E65100;
+}
+
+input[type="range"].accent-violet::-webkit-slider-thumb {
+  background: #5C4A72;
+}
+
+/* ─── Custom Scrollbar ────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #F8F9FA; }
+::-webkit-scrollbar-thumb { background: #CBD7C9; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9FB29C; }
+
+/* ─── Table Styles ────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #556653;
+  background: #F4F7F3;
+  border-bottom: 1px solid #E1E8DF;
+  white-space: nowrap;
+}
+
+.data-table tbody td {
+  padding: 10px 14px;
+  color: #1C281A;
+  border-bottom: 1px solid #EEF3ED;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+  background: #F7FAF6;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Mobile horizontal scroll wrapper for tables */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0 0 12px 12px;
+}
+
+/* ─── Input / Form Styling ────────────────────── */
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #CBD7C9;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1C281A;
+  background: #FFFFFF;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.form-input::placeholder {
+  color: #9FB29C;
+}
+
+.form-input:focus {
+  border-color: #385E31;
+  box-shadow: 0 0 0 3px rgba(56, 94, 49, 0.15);
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #465444;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Risk Score Circle ───────────────────────── */
+.risk-circle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Mobile Bottom Nav ───────────────────────── */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #FFFFFF;
+  border-top: 1px solid #E1E8DF;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -2px 10px rgba(28, 40, 26, 0.05);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 10px;
+  color: #728070;
+}
+
+.mobile-nav-item.active {
+  color: #385E31;
+  font-weight: 600;
+}
+
+/* ─── Micro-Animations ────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

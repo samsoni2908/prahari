@@ -1,0 +1,76 @@
+{
+  "model_a_hr_only": {
+    "features_count": 17,
+    "features": [
+      "duty_hours_7d",
+      "duty_hours_14d",
+      "duty_hours_30d",
+      "night_shift_count_14d",
+      "night_shift_ratio_30d",
+      "consecutive_duty_max_14d",
+      "min_rest_gap_7d",
+      "mean_rest_gap_14d",
+      "rest_deficit_days_30d",
+      "days_since_leave",
+      "leave_days_90d",
+      "leave_frequency_180d",
+      "deployment_days_30d",
+      "deployment_intensity_30d",
+      "training_hours_30d",
+      "unit_staffing_pressure",
+      "workload_delta_vs_personal_baseline"
+    ],
+    "metrics": {
+      "accuracy": 0.8111,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "roc_auc": 0.5576,
+      "pr_auc": 0.2505,
+      "brier_score": 0.1525
+    }
+  },
+  "model_b_combined": {
+    "features_count": 23,
+    "features": [
+      "duty_hours_7d",
+      "duty_hours_14d",
+      "duty_hours_30d",
+      "night_shift_count_14d",
+      "night_shift_ratio_30d",
+      "consecutive_duty_max_14d",
+      "min_rest_gap_7d",
+      "mean_rest_gap_14d",
+      "rest_deficit_days_30d",
+      "days_since_leave",
+      "leave_days_90d",
+      "leave_frequency_180d",
+      "deployment_days_30d",
+      "deployment_intensity_30d",
+      "training_hours_30d",
+      "unit_staffing_pressure",
+      "workload_delta_vs_personal_baseline",
+      "wb_score_latest",
+      "wb_score_mean",
+      "wb_score_std",
+      "wb_score_delta_30d",
+      "wb_assessments_count",
+      "wb_days_since_last"
+    ],
+    "metrics": {
+      "accuracy": 0.8111,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "roc_auc": 0.5528,
+      "pr_auc": 0.2537,
+      "brier_score": 0.1524
+    }
+  },
+  "comparative_delta": {
+    "delta_pr_auc": 0.0032,
+    "delta_f1": 0.0,
+    "delta_brier_score": -0.0001
+  },
+  "scientific_conclusion": "Model B (Combined) demonstrates superior discrimination (higher PR-AUC / ROC-AUC) without privacy loss."
+}

@@ -1,0 +1,25 @@
+FROM ghcr.io/cirruslabs/android-sdk:34
+
+WORKDIR /workspace
+
+# Install Gradle 8.4
+RUN curl -sSL https://services.gradle.org/distributions/gradle-8.4-bin.zip -o gradle.zip \
+    && unzip -q gradle.zip -d /opt \
+    && ln -s /opt/gradle-8.4/bin/gradle /usr/bin/gradle \
+    && rm gradle.zip
+
+# Accept Android licenses
+RUN yes | sdkmanager --licenses || true
+
+ARG CACHEBUST=1
+RUN echo "Cache bust: $CACHEBUST"
+# Copy Android project
+COPY mobile/android/ /workspace/
+
+ARG SERVER_URL="https://prahari.up.railway.app"
+ENV SERVER_URL=${SERVER_URL}
+
+# Build unified flavor using pre-installed Gradle 8.4
+CMD ["bash", "-c", "gradle assembleUnifiedDebug -PSERVER_URL=${SERVER_URL} --stacktrace && mkdir -p /dist && cp app/build/outputs/apk/unified/debug/*.apk /dist/prahari-unified.apk"]
+
+
