@@ -1,8 +1,6 @@
 name: Build SWASTI Mobile APKs
 
 on:
-  push:
-    branches: [ "main", "deploy/*" ]
   workflow_dispatch:
     inputs:
       server_url:
@@ -28,15 +26,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Gradle Wrapper
-        working-directory: mobile/android
-        run: |
-          gradle wrapper --gradle-version 8.4 || true
-          chmod +x gradlew || true
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Build All Role APKs
+      - name: Generate Wrapper and Build APKs
         working-directory: mobile/android
         run: |
+          gradle wrapper --gradle-version 8.4
+          chmod +x gradlew
           TARGET_URL="${{ inputs.server_url || 'https://swasti.up.railway.app' }}"
           ./gradlew assemblePersonnelDebug assembleCommanderDebug assembleWelfareDebug assembleUnifiedDebug -PSERVER_URL="$TARGET_URL" --stacktrace
 
