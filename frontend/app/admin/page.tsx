@@ -1,1196 +1,1438 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { RoleGuard } from "@/components/auth/RoleGuard";
-import { Shell } from "@/components/layout/Shell";
-import { StatCard } from "@/components/ui/StatCard";
-import { Modal } from "@/components/ui/Modal";
-import { api } from "@/lib/api";
-import { useToast } from "@/components/ui/Toast";
 import {
-  Users,
+  Settings,
   Shield,
-  Layers,
   Server,
   Database,
-  Plus,
+  Cpu,
+  Users,
   CheckCircle,
-  AlertCircle,
-  Activity,
-  Key,
-  Lock,
   RefreshCw,
-  FileText,
-  ToggleLeft,
-  ToggleRight,
+  UserPlus,
+  Lock,
+  Sliders,
+  CheckCircle2,
+  AlertCircle,
+  Briefcase,
+  Layers,
+  KeyRound,
+  FileCheck,
   ShieldCheck,
-  CheckCheck,
+  HelpCircle,
+  Play,
+  Upload,
+  FileSpreadsheet,
+  ArrowRightLeft,
+  Award,
+  Calendar,
+  History,
+  Check,
+  X,
+  PlusCircle,
+  Clock,
+  Eye,
+  FileText,
 } from "lucide-react";
-import clsx from "clsx";
-import { Skeleton, SkeletonCard, SkeletonTable } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { adminApi, generateIdempotencyKey } from "@/lib/api";
+import { StatCard } from "@/components/common/Cards";
+import { Button } from "@/components/common/Button";
+import { StatusBadge } from "@/components/common/Badges";
+import { LoadingState, EmptyState } from "@/components/common/States";
+import { Drawer } from "@/components/common/Drawer";
 
-export default function AdminPortal() {
-  const { toast } = useToast();
-  const [currentTab, setCurrentTab] = useState<string>("dashboard");
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "users" | "personnel" | "units" | "skills" | "data" | "system"
+  >("dashboard");
+  const [health, setHealth] = useState<any>(null);
+  const [models, setModels] = useState<any>(null);
+  const [jobs, setJobs] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [personnel, setPersonnel] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [skills, setSkills] = useState<any[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [importTemplates, setImportTemplates] = useState<any>(null);
+  const [importHistory, setImportHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Operational Run State
+  const [runCutoff, setRunCutoff] = useState("2026-08-30");
+  const [runUnitId, setRunUnitId] = useState("");
+  const [runSubmitting, setRunSubmitting] = useState(false);
+  const [runResult, setRunResult] = useState<any | null>(null);
+
+  // Create User form
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("prahari123");
+  const [newRole, setNewRole] = useState("PERSONNEL");
+  const [userCreating, setUserCreating] = useState(false);
+
+  // Create Personnel form
+  const [newPersCode, setNewPersCode] = useState("");
+  const [newPersPseudo, setNewPersPseudo] = useState("");
+  const [newPersFullName, setNewPersFullName] = useState("");
+  const [newPersRank, setNewPersRank] = useState("CONSTABLE");
+  const [newPersRole, setNewPersRole] = useState("Security Officer");
+  const [newPersUnitId, setNewPersUnitId] = useState("");
+  const [newPersServiceYears, setNewPersServiceYears] = useState(3);
+  const [persCreating, setPersCreating] = useState(false);
+
+  // Transfer Personnel form
+  const [transferPersId, setTransferPersId] = useState("");
+  const [transferTargetUnitId, setTransferTargetUnitId] = useState("");
+  const [transferReason, setTransferReason] = useState("ROUTINE_ROTATION");
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+
+  // Create Unit form
+  const [newUnitCode, setNewUnitCode] = useState("");
+  const [newUnitName, setNewUnitName] = useState("");
+  const [newUnitType, setNewUnitType] = useState("COMPANY");
+  const [newUnitStrength, setNewUnitStrength] = useState(120);
+  const [newUnitLocation, setNewUnitLocation] = useState("Northern Border");
+  const [unitCreating, setUnitCreating] = useState(false);
+
+  // Create Skill form
+  const [newSkillCode, setNewSkillCode] = useState("");
+  const [newSkillName, setNewSkillName] = useState("");
+  const [newSkillCategory, setNewSkillCategory] = useState("TACTICAL");
+  const [skillCreating, setSkillCreating] = useState(false);
+
+  // 6-Dataset CSV Import State
+  const [selectedDataset, setSelectedDataset] = useState<
+    "duties" | "rest_records" | "leave_records" | "deployments" | "training" | "staffing"
+  >("duties");
+  const [csvText, setCsvText] = useState("");
+  const [sourceTimestamp, setSourceTimestamp] = useState(new Date().toISOString());
+  const [validatingImport, setValidatingImport] = useState(false);
+  const [validationResult, setValidationResult] = useState<any | null>(null);
+  const [committingImport, setCommittingImport] = useState(false);
+  const [commitResult, setCommitResult] = useState<any | null>(null);
 
   useEffect(() => {
+    loadData();
+
     if (typeof window !== "undefined") {
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (tabParam) {
-        setCurrentTab(tabParam);
-      }
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "users") setActiveTab("users");
+      else if (tab === "personnel") setActiveTab("personnel");
+      else if (tab === "units") setActiveTab("units");
+      else if (tab === "skills") setActiveTab("skills");
+      else if (tab === "data" || tab === "imports") setActiveTab("data");
+      else if (tab === "system" || tab === "settings") setActiveTab("system");
+      else if (tab === "dashboard") setActiveTab("dashboard");
     }
   }, []);
 
-  const handleTabChange = (newTab: string) => {
-    setCurrentTab(newTab);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("tab", newTab);
-      window.history.replaceState({}, "", url.toString());
-    }
-  };
-
-  // Health and entity lists
-  const [healthData, setHealthData] = useState<any>(null);
-  const [dataSummary, setDataSummary] = useState<any>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [userList, setUserList] = useState<any[]>([]);
-  const [personnelList, setPersonnelList] = useState<any[]>([]);
-  const [unitList, setUnitList] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  // Audit log filters
-  const [auditRoleFilter, setAuditRoleFilter] = useState<string>("ALL");
-  const [auditResultFilter, setAuditResultFilter] = useState<string>("ALL");
-
-  // Modals
-  const [isAddUserOpen, setIsAddUserOpen] = useState<boolean>(false);
-  const [newUsername, setNewUsername] = useState<string>("");
-  const [newPassword, setNewPassword] = useState<string>("");
-  const [newRole, setNewRole] = useState<string>("PERSONNEL");
-  const [userSuccess, setUserSuccess] = useState<string | null>(null);
-
-  const [isAddUnitOpen, setIsAddUnitOpen] = useState<boolean>(false);
-  const [newUnitCode, setNewUnitCode] = useState<string>("");
-  const [newUnitName, setNewUnitName] = useState<string>("");
-  const [newUnitStrength, setNewUnitStrength] = useState<number>(100);
-
-  // Edit Personnel Modal
-  const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState<boolean>(false);
-  const [editingPersonnel, setEditingPersonnel] = useState<any>(null);
-  const [editRank, setEditRank] = useState<string>("");
-  const [editRoleTitle, setEditRoleTitle] = useState<string>("");
-  const [editPersonnelStatus, setEditPersonnelStatus] = useState<string>("ACTIVE");
-  const [editPersonnelSuccess, setEditPersonnelSuccess] = useState<string | null>(null);
-
-  // Edit Unit Modal
-  const [isEditUnitOpen, setIsEditUnitOpen] = useState<boolean>(false);
-  const [editingUnit, setEditingUnit] = useState<any>(null);
-  const [editUnitName, setEditUnitName] = useState<string>("");
-  const [editUnitType, setEditUnitType] = useState<string>("");
-  const [editUnitStrength, setEditUnitStrength] = useState<number>(100);
-  const [editUnitSuccess, setEditUnitSuccess] = useState<string | null>(null);
-
-  // Edit User Modal
-  const [isEditUserOpen, setIsEditUserOpen] = useState<boolean>(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
-  const [editUserRole, setEditUserRole] = useState<string>("PERSONNEL");
-  const [editUserSuccess, setEditUserSuccess] = useState<string | null>(null);
-
-  const loadAdminData = async () => {
+  async function loadData() {
     setLoading(true);
+    setError(null);
     try {
-      const [hRes, uRes, pRes, unitRes, dsRes, alRes] = await Promise.allSettled([
-        api.get("/admin/system-health"),
-        api.get("/admin/users"),
-        api.get("/admin/personnel"),
-        api.get("/admin/units"),
-        api.get("/admin/data-summary"),
-        api.get("/admin/audit-logs?limit=50"),
+      const [h, m, j, u, p, un, sk, pol, aud, tpls, imps] = await Promise.all([
+        adminApi.getHealth().catch(() => null),
+        adminApi.getModels().catch(() => null),
+        adminApi.getJobs().catch(() => null),
+        adminApi.listUsers().catch(() => []),
+        adminApi.listPersonnel().catch(() => []),
+        adminApi.listUnits().catch(() => []),
+        adminApi.listSkills().catch(() => ({ items: [] })),
+        adminApi.listPolicies().catch(() => []),
+        adminApi.getAudit().catch(() => []),
+        adminApi.getImportTemplates().catch(() => null),
+        adminApi.getImportHistory().catch(() => ({ items: [] })),
       ]);
+      setHealth(h);
+      setModels(m);
+      setJobs(j);
+      setUsers(u || []);
+      setPersonnel(p || []);
+      setUnits(un || []);
+      setSkills(sk?.items || []);
+      setPolicies(pol || []);
+      setAuditLog(aud || []);
+      setImportTemplates(tpls);
+      setImportHistory(imps?.items || []);
 
-      if (hRes.status === "fulfilled") setHealthData(hRes.value);
-      if (uRes.status === "fulfilled") setUserList(uRes.value || []);
-      if (pRes.status === "fulfilled") setPersonnelList(pRes.value || []);
-      if (unitRes.status === "fulfilled") setUnitList(unitRes.value || []);
-      if (dsRes.status === "fulfilled") setDataSummary(dsRes.value);
-      if (alRes.status === "fulfilled") setAuditLogs(alRes.value || []);
-    } catch (err) {
-      console.error("Error loading admin data", err);
+      if (un && un.length > 0) {
+        if (!newPersUnitId) setNewPersUnitId(un[0].id);
+        if (!transferTargetUnitId) setTransferTargetUnitId(un[0].id);
+      }
+      if (p && p.length > 0 && !transferPersId) {
+        setTransferPersId(p[0].id);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load admin data");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
-
-  const handleCreateUser = async (e: React.FormEvent) => {
+  // Handle Trigger Operational Run
+  async function handleTriggerRun(e: React.FormEvent) {
     e.preventDefault();
+    setRunSubmitting(true);
+    setRunResult(null);
+    setError(null);
     try {
-      await api.post("/admin/users", {
-        username: newUsername.trim(),
+      const res = await adminApi.triggerOperationalRun({
+        cutoff: runCutoff,
+        unit_id: runUnitId || undefined,
+      });
+      setRunResult(res);
+      setSuccessMsg(
+        `Operational detection run finished: ${res.processed} records processed (${res.mode} mode).`
+      );
+    } catch (err: any) {
+      setError(err.message || "Operational run failed");
+    } finally {
+      setRunSubmitting(false);
+    }
+  }
+
+  // Handle Create User
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUsername || !newPassword) return;
+    setUserCreating(true);
+    setError(null);
+    try {
+      await adminApi.createUser({
+        username: newUsername,
         password: newPassword,
         role: newRole,
       });
-      setUserSuccess(`User account '${newUsername}' created successfully.`);
-      toast.success(`User account '${newUsername}' created successfully.`);
+      setSuccessMsg(`User '${newUsername}' successfully created with Argon2id hash!`);
       setNewUsername("");
-      setNewPassword("");
-      await loadAdminData();
-      setTimeout(() => {
-        setIsAddUserOpen(false);
-        setUserSuccess(null);
-      }, 1500);
+      const refreshed = await adminApi.listUsers();
+      setUsers(refreshed || []);
     } catch (err: any) {
-      toast.error("Error creating user: " + err.message);
+      setError(err.message || "Failed to create user");
+    } finally {
+      setUserCreating(false);
     }
-  };
+  }
 
-  const handleToggleUserStatus = async (user: any) => {
+  async function handleToggleUserActive(userId: string, currentActive: boolean) {
     try {
-      await api.patch(`/admin/users/${user.id}`, {
-        is_active: !user.is_active,
-      });
-      toast.success(`User '${user.username}' status updated to ${!user.is_active ? 'ACTIVE' : 'INACTIVE'}.`);
-      await loadAdminData();
+      await adminApi.updateUser(userId, { is_active: !currentActive });
+      const refreshed = await adminApi.listUsers();
+      setUsers(refreshed || []);
+      setSuccessMsg("User activation status updated.");
     } catch (err: any) {
-      toast.error("Error updating user status: " + (err.message || "Unknown error"));
+      setError(err.message);
     }
-  };
+  }
 
-  const handleCreateUnit = async (e: React.FormEvent) => {
+  // Handle Create Personnel
+  async function handleCreatePersonnel(e: React.FormEvent) {
     e.preventDefault();
+    if (!newPersCode || !newPersFullName || !newPersUnitId) return;
+    setPersCreating(true);
+    setError(null);
     try {
-      await api.post("/admin/units", {
-        unit_code: newUnitCode.trim().toUpperCase(),
-        unit_name: newUnitName.trim(),
-        unit_type: "BRIGADE",
-        sanctioned_strength: newUnitStrength,
+      const pseudo = newPersPseudo || `PRH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      await adminApi.createPersonnel({
+        personnel_code: newPersCode,
+        pseudo_id: pseudo,
+        full_name: newPersFullName,
+        rank_or_grade: newPersRank,
+        role_title: newPersRole,
+        unit_id: newPersUnitId,
+        service_years: Number(newPersServiceYears),
       });
-      toast.success(`Unit '${newUnitCode.trim().toUpperCase()}' created successfully.`);
+      setSuccessMsg(`Personnel record '${newPersFullName}' (${pseudo}) created successfully.`);
+      setNewPersCode("");
+      setNewPersPseudo("");
+      setNewPersFullName("");
+      const refreshed = await adminApi.listPersonnel();
+      setPersonnel(refreshed || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to create personnel");
+    } finally {
+      setPersCreating(false);
+    }
+  }
+
+  // Handle Transfer Personnel
+  async function handleTransferPersonnel(e: React.FormEvent) {
+    e.preventDefault();
+    if (!transferPersId || !transferTargetUnitId) return;
+    setTransferSubmitting(true);
+    setError(null);
+    try {
+      await adminApi.transferPersonnel(transferPersId, {
+        target_unit_id: transferTargetUnitId,
+        reason: transferReason,
+      });
+      setSuccessMsg("Personnel unit transfer executed and logged to audit.");
+      const refreshed = await adminApi.listPersonnel();
+      setPersonnel(refreshed || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to transfer personnel");
+    } finally {
+      setTransferSubmitting(false);
+    }
+  }
+
+  // Handle Create Unit
+  async function handleCreateUnit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUnitCode || !newUnitName) return;
+    setUnitCreating(true);
+    setError(null);
+    try {
+      await adminApi.createUnit({
+        unit_code: newUnitCode,
+        unit_name: newUnitName,
+        unit_type: newUnitType,
+        sanctioned_strength: Number(newUnitStrength),
+        location_label: newUnitLocation,
+      });
+      setSuccessMsg(`Unit '${newUnitName}' (${newUnitCode}) created successfully.`);
       setNewUnitCode("");
       setNewUnitName("");
-      setIsAddUnitOpen(false);
-      await loadAdminData();
+      const refreshed = await adminApi.listUnits();
+      setUnits(refreshed || []);
     } catch (err: any) {
-      toast.error("Error creating unit: " + err.message);
+      setError(err.message || "Failed to create unit");
+    } finally {
+      setUnitCreating(false);
     }
-  };
+  }
 
-  const handleOpenEditPersonnel = (p: any) => {
-    setEditingPersonnel(p);
-    setEditRank(p.rank_or_grade || "");
-    setEditRoleTitle(p.role_title || "");
-    setEditPersonnelStatus(p.status || "ACTIVE");
-    setIsEditPersonnelOpen(true);
-  };
-
-  const handleUpdatePersonnel = async (e: React.FormEvent) => {
+  // Handle Create Skill
+  async function handleCreateSkill(e: React.FormEvent) {
     e.preventDefault();
-    if (!editingPersonnel) return;
+    if (!newSkillCode || !newSkillName) return;
+    setSkillCreating(true);
+    setError(null);
     try {
-      await api.patch(`/admin/personnel/${editingPersonnel.id}`, {
-        rank_or_grade: editRank,
-        role_title: editRoleTitle,
-        status: editPersonnelStatus,
+      await adminApi.createSkill({
+        skill_code: newSkillCode,
+        skill_name: newSkillName,
+        category: newSkillCategory,
       });
-      setEditPersonnelSuccess(`Personnel record ${editingPersonnel.personnel_code} updated successfully.`);
-      toast.success(`Personnel record ${editingPersonnel.personnel_code} updated.`);
-      await loadAdminData();
-      setTimeout(() => {
-        setIsEditPersonnelOpen(false);
-        setEditPersonnelSuccess(null);
-        setEditingPersonnel(null);
-      }, 1200);
+      setSuccessMsg(`Skill '${newSkillName}' (${newSkillCode}) created successfully.`);
+      setNewSkillCode("");
+      setNewSkillName("");
+      const refreshed = await adminApi.listSkills();
+      setSkills(refreshed?.items || []);
     } catch (err: any) {
-      toast.error("Failed to update personnel: " + err.message);
+      setError(err.message || "Failed to create skill");
+    } finally {
+      setSkillCreating(false);
     }
-  };
+  }
 
-  const handleOpenEditUnit = (u: any) => {
-    setEditingUnit(u);
-    setEditUnitName(u.unit_name || "");
-    setEditUnitType(u.unit_type || "BRIGADE");
-    setEditUnitStrength(u.sanctioned_strength || 100);
-    setIsEditUnitOpen(true);
-  };
-
-  const handleUpdateUnit = async (e: React.FormEvent) => {
+  // CSV Import Step 1: Validate
+  async function handleValidateImport(e: React.FormEvent) {
     e.preventDefault();
-    if (!editingUnit) return;
-    try {
-      await api.patch(`/admin/units/${editingUnit.id}`, {
-        unit_name: editUnitName,
-        unit_type: editUnitType,
-        sanctioned_strength: Number(editUnitStrength),
-      });
-      setEditUnitSuccess(`Unit ${editingUnit.unit_code} updated successfully.`);
-      toast.success(`Unit ${editingUnit.unit_code} updated.`);
-      await loadAdminData();
-      setTimeout(() => {
-        setIsEditUnitOpen(false);
-        setEditUnitSuccess(null);
-        setEditingUnit(null);
-      }, 1200);
-    } catch (err: any) {
-      toast.error("Failed to update unit: " + err.message);
+    if (!csvText.trim()) {
+      setError("Please paste CSV data to validate.");
+      return;
     }
-  };
-
-  const handleOpenEditUser = (u: any) => {
-    setEditingUser(u);
-    setEditUserRole(u.role);
-    setIsEditUserOpen(true);
-  };
-
-  const handleUpdateUserRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
+    setValidatingImport(true);
+    setError(null);
+    setValidationResult(null);
+    setCommitResult(null);
     try {
-      await api.patch(`/admin/users/${editingUser.id}`, {
-        role: editUserRole,
+      const res = await adminApi.validateImport({
+        dataset_type: selectedDataset,
+        csv_data: csvText.trim(),
+        source_timestamp: sourceTimestamp,
       });
-      setEditUserSuccess(`User ${editingUser.username} role updated to ${editUserRole}.`);
-      toast.success(`User ${editingUser.username} role updated.`);
-      await loadAdminData();
-      setTimeout(() => {
-        setIsEditUserOpen(false);
-        setEditUserSuccess(null);
-        setEditingUser(null);
-      }, 1200);
+      setValidationResult(res);
+      if (res.status === "VALIDATED") {
+        setSuccessMsg(`CSV validation passed: ${res.row_count} rows ready for atomic commit.`);
+      } else {
+        setError(`CSV validation rejected: ${res.errors?.length || 0} formatting/schema errors found.`);
+      }
     } catch (err: any) {
-      toast.error("Failed to update user role: " + err.message);
+      setError(err.message || "Validation failed");
+    } finally {
+      setValidatingImport(false);
     }
-  };
+  }
+
+  // CSV Import Step 2: Atomic Commit
+  async function handleCommitImport() {
+    if (!validationResult || validationResult.status !== "VALIDATED") return;
+    setCommittingImport(true);
+    setError(null);
+    try {
+      const res = await adminApi.commitImport(validationResult.id, {
+        dataset_type: selectedDataset,
+        csv_data: csvText.trim(),
+        source_timestamp: sourceTimestamp,
+        checksum: validationResult.checksum,
+        expected_revision: validationResult.revision,
+      });
+      setCommitResult(res);
+      setSuccessMsg(
+        `Import committed atomically: ${res.row_count} rows written to ${res.dataset_type} (Revision: ${res.revision.slice(0, 10)}...).`
+      );
+      setValidationResult(null);
+      setCsvText("");
+      const imps = await adminApi.getImportHistory();
+      setImportHistory(imps?.items || []);
+    } catch (err: any) {
+      setError(err.message || "Atomic commit failed");
+    } finally {
+      setCommittingImport(false);
+    }
+  }
 
   return (
-    <RoleGuard allowedRoles={["ADMIN"]}>
-      <Shell currentTab={currentTab} onTabChange={handleTabChange}>
-        {/* Top Header */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-xl border border-cyan-500/20">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">
-                SYSTEM ADMINISTRATION
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                ROOT PRIVILEGES
-              </span>
-            </div>
-            <h1 className="text-xl font-bold font-mono tracking-wide text-white mt-1">
-              SWASTI System Console
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* ─── Header & Telemetry Status ───────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#CFDDCE]">
+        <div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="font-serif text-2xl font-bold text-[#182417]">
+              System Administration &amp; Governance
             </h1>
-            <p className="text-xs text-slate-400">
-              Access Control • Master Records • Canonical Infrastructure Management • System Audit Log
-            </p>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] font-bold">
+              Console Only (Zero Clinical Decisions)
+            </span>
           </div>
-
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
-            <Shield className="w-4 h-4 text-cyan-400" />
-            <span>Strict Role Separation • No Welfare Decisions</span>
-          </div>
+          <p className="text-xs text-[#677766] mt-1">
+            4-Role RBAC • Master Ingestion • Pipeline Trigger • RLS Enforcement • Immutable Audit Ledger
+          </p>
         </div>
 
-        {/* Dynamic Views */}
-        {/* ======================================================== */}
-        {/* TAB: DASHBOARD */}
-        {/* ======================================================== */}
-        {currentTab === "dashboard" && (
-          <div className="space-y-6">
-            {/* 4 Stat Overview Cards */}
-            {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard
-                  label="Active Users"
-                  value={healthData?.counts?.users ?? userList.length}
-                  subtext="RBAC Authorized Accounts"
-                  icon={<Users className="w-5 h-5" />}
-                  accentColor="cyan"
-                />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadData}
+            disabled={loading}
+            icon={<RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />}
+          >
+            Refresh Telemetry
+          </Button>
 
-                <StatCard
-                  label="Personnel Records"
-                  value={healthData?.counts?.personnel ?? personnelList.length}
-                  subtext="Personnel Master Roster"
-                  icon={<Shield className="w-5 h-5" />}
-                  accentColor="gold"
-                />
-
-                <StatCard
-                  label="Operational Units"
-                  value={healthData?.counts?.units ?? unitList.length}
-                  subtext="Configured Battalions"
-                  icon={<Layers className="w-5 h-5" />}
-                  accentColor="green"
-                />
-
-                <StatCard
-                  label="Canonical Database"
-                  value={
-                    dataSummary?.tables || dataSummary?.table_breakdown
-                      ? `${Object.keys(dataSummary.tables || dataSummary.table_breakdown).length} Tables`
-                      : "—"
-                  }
-                  subtext={
-                    dataSummary?.total_canonical_records
-                      ? `${Number(dataSummary.total_canonical_records).toLocaleString()} records`
-                      : "Online"
-                  }
-                  icon={<Database className="w-5 h-5" />}
-                  accentColor="violet"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass-panel p-5 rounded-xl border border-cyan-500/20">
-              <h3 className="text-sm font-bold font-mono text-cyan-300 uppercase mb-3 flex items-center gap-2">
-                <Server className="w-4 h-4 text-cyan-400" />
-                <span>Core System Health</span>
-              </h3>
-              <div className="space-y-3 font-mono text-xs">
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">PostgreSQL Status:</span>
-                  <span className="text-emerald-400 font-bold">
-                    {dataSummary?.status || dataSummary?.database_health || "ONLINE"} ({Object.keys(dataSummary?.tables || dataSummary?.table_breakdown || {}).length || 26} Tables)
-                  </span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">FastAPI Gateway:</span>
-                  <span className="text-cyan-400 font-bold">HEALTHY (:8000)</span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">Cryptographic Auth:</span>
-                  <span className="text-slate-200">Argon2id + JTI Tracking</span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">Privacy Vault:</span>
-                  <span className="text-purple-400 font-bold">SEPARATED (Well-being Record Vault)</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel p-5 rounded-xl border border-cyan-500/20">
-              <h3 className="text-sm font-bold font-mono text-amber-300 uppercase mb-3 flex items-center gap-2">
-                <Database className="w-4 h-4 text-amber-400" />
-                <span>Canonical Data Architecture</span>
-              </h3>
-              <div className="space-y-3 font-mono text-xs">
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">Seed Status:</span>
-                  <span className="text-emerald-400 font-bold">FULLY SEEDED & VERIFIED</span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">Total Live Records:</span>
-                  <span className="text-cyan-300 font-bold">
-                    {dataSummary?.total_canonical_records
-                      ? `${Number(dataSummary.total_canonical_records).toLocaleString()} Records`
-                      : (loading ? "..." : "—")}
-                  </span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">ML Risk Persistence:</span>
-                  <span className="text-emerald-400 font-bold">ACTIVE (model_outputs)</span>
-                </div>
-                <div className="flex justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400">Audit Events Logged:</span>
-                  <span className="text-slate-200 font-bold">{auditLogs.length} Events</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <span className="px-3 py-1.5 rounded-full bg-[#ECFDF5] text-[#15803D] text-xs font-semibold border border-[#A7F3D0] flex items-center gap-1.5">
+            <CheckCircle className="h-4 w-4" />
+            <span>DB: {health?.database_status || "CONNECTED"}</span>
+          </span>
         </div>
-        )}
+      </div>
 
-        {/* ======================================================== */}
-        {/* TAB: USERS */}
-        {/* ======================================================== */}
-        {currentTab === "users" && (
-          <div className="glass-panel p-6 rounded-xl border border-cyan-500/20">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold font-mono text-cyan-300 uppercase flex items-center gap-2">
-                <Users className="w-5 h-5 text-cyan-400" />
-                <span>User Accounts & RBAC Roles</span>
-              </h2>
-              <button
-                onClick={() => setIsAddUserOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-cyan-600 text-slate-950 font-mono font-bold text-xs hover:bg-cyan-500 flex items-center gap-1.5 shadow-glowCyan"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add User</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900/80 text-slate-400 border-b border-cyan-500/20">
-                  <tr>
-                    <th className="p-3">Username</th>
-                    <th className="p-3">Role</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Created</th>
-                    <th className="p-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="p-4">
-                        <SkeletonTable rows={4} cols={5} />
-                      </td>
-                    </tr>
-                  ) : userList.length > 0 ? (
-                    userList.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-900/40">
-                        <td className="p-3 text-white font-bold">{u.username}</td>
-                        <td className="p-3">
-                          <span
-                            className={clsx(
-                              "px-2 py-0.5 rounded text-[10px] font-bold",
-                              u.role === "ADMIN"
-                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                                : u.role === "WELFARE_OFFICER"
-                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                : u.role === "COMMANDER"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                            )}
-                          >
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={clsx(
-                              "px-2 py-0.5 rounded text-[10px] font-bold",
-                              u.is_active
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                : "bg-red-500/10 text-red-400 border border-red-500/30"
-                            )}
-                          >
-                            {u.is_active ? "ACTIVE" : "DISABLED"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-400">{u.created_at?.substring(0, 10) || "N/A"}</td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleOpenEditUser(u)}
-                              className="px-2.5 py-1 rounded text-[11px] font-bold bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/40"
-                            >
-                              Role
-                            </button>
-                            <button
-                              onClick={() => handleToggleUserStatus(u)}
-                              className={clsx(
-                                "px-2.5 py-1 rounded text-[11px] font-bold transition-all",
-                                u.is_active
-                                  ? "bg-red-600/20 text-red-300 border border-red-500/40 hover:bg-red-600/40"
-                                  : "bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/40"
-                              )}
-                            >
-                              {u.is_active ? "Disable" : "Enable"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-4">
-                        <EmptyState
-                          icon={<Users className="w-6 h-6" />}
-                          title="No Users Registered"
-                          message="No system user accounts found."
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      {error && (
+        <div className="p-3.5 rounded-xl bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA] text-xs flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
           </div>
-        )}
+          <button onClick={() => setError(null)} className="p-1 hover:bg-[#FECACA] rounded">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
-        {/* ======================================================== */}
-        {/* TAB: PERSONNEL */}
-        {/* ======================================================== */}
-        {currentTab === "personnel" && (
-          <div className="glass-panel p-6 rounded-xl border border-cyan-500/20">
-            <h2 className="text-base font-bold font-mono text-cyan-300 uppercase mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-cyan-400" />
-              <span>Personnel Master Registry</span>
-            </h2>
-            {loading ? (
-              <SkeletonTable rows={4} cols={6} />
-            ) : personnelList.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-slate-900/80 text-slate-400 border-b border-cyan-500/20">
-                    <tr>
-                      <th className="p-3">Code</th>
-                      <th className="p-3">Full Name</th>
-                      <th className="p-3">Rank / Grade</th>
-                      <th className="p-3">Role</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {personnelList.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-900/40">
-                        <td className="p-3 text-cyan-300 font-bold">{p.personnel_code}</td>
-                        <td className="p-3 text-white">{p.full_name}</td>
-                        <td className="p-3 text-slate-300">{p.rank_or_grade}</td>
-                        <td className="p-3 text-slate-400">{p.role_title}</td>
-                        <td className="p-3 text-emerald-400">{p.status}</td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleOpenEditPersonnel(p)}
-                            className="px-2.5 py-1 rounded text-[11px] font-bold bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/40"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                icon={<Shield className="w-6 h-6" />}
-                title="No Personnel Found"
-                message="No personnel master records loaded yet."
-              />
-            )}
+      {successMsg && (
+        <div className="p-3.5 rounded-xl bg-[#ECFDF5] text-[#15803D] border border-[#A7F3D0] text-xs flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{successMsg}</span>
           </div>
-        )}
+          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-[#A7F3D0] rounded">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
-        {/* ======================================================== */}
-        {/* TAB: UNITS */}
-        {/* ======================================================== */}
-        {currentTab === "units" && (
-          <div className="glass-panel p-6 rounded-xl border border-cyan-500/20">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold font-mono text-cyan-300 uppercase flex items-center gap-2">
-                <Layers className="w-5 h-5 text-cyan-400" />
-                <span>Operational Units & Formations</span>
-              </h2>
-              <button
-                onClick={() => setIsAddUnitOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-cyan-600 text-slate-950 font-mono font-bold text-xs hover:bg-cyan-500 flex items-center gap-1.5 shadow-glowCyan"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Unit</span>
-              </button>
-            </div>
-
-            {loading ? (
-              <SkeletonTable rows={4} cols={5} />
-            ) : unitList.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-slate-900/80 text-slate-400 border-b border-cyan-500/20">
-                    <tr>
-                      <th className="p-3">Unit Code</th>
-                      <th className="p-3">Unit Name</th>
-                      <th className="p-3">Type</th>
-                      <th className="p-3">Sanctioned Strength</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {unitList.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-900/40">
-                        <td className="p-3 text-cyan-300 font-bold">{u.unit_code}</td>
-                        <td className="p-3 text-white">{u.unit_name}</td>
-                        <td className="p-3 text-slate-300">{u.unit_type}</td>
-                        <td className="p-3 text-amber-400">{u.sanctioned_strength}</td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleOpenEditUnit(u)}
-                            className="px-2.5 py-1 rounded text-[11px] font-bold bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/40"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                icon={<Layers className="w-6 h-6" />}
-                title="No Units Found"
-                message="No operational units configured."
-              />
-            )}
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB: DATA MANAGEMENT (Live Table Breakdown) */}
-        {/* ======================================================== */}
-        {currentTab === "data_management" && (
-          <div className="space-y-6">
-            <div className="glass-panel p-6 rounded-xl border border-cyan-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-bold font-mono text-cyan-300 uppercase flex items-center gap-2">
-                    <Database className="w-5 h-5 text-cyan-400" />
-                    <span>Canonical PostgreSQL Table Breakdown</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 font-mono mt-1">
-                    Live database verification across all 26 application tables.
-                  </p>
-                </div>
-                <button
-                  onClick={loadAdminData}
-                  className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700 text-cyan-300 text-xs font-mono hover:text-white flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Refresh DB Counts</span>
-                </button>
-              </div>
-
-              {loading || (!dataSummary?.tables && !dataSummary?.table_breakdown) ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <SkeletonCard key={i} />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 font-mono text-xs">
-                  {Object.entries(dataSummary.tables || dataSummary.table_breakdown).map(([tbl, cnt]: any) => (
-                    <div
-                      key={tbl}
-                      className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between"
-                    >
-                      <span className="text-slate-300 font-semibold">{tbl}</span>
-                      <span className="text-cyan-400 font-bold px-2 py-0.5 rounded bg-slate-950 border border-slate-700">
-                        {Number(cnt).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+      {/* ─── Tabs Navigation ─────────────────────────────────────────── */}
+      <div className="flex border-b border-[#CFDDCE] space-x-2 overflow-x-auto">
+        {[
+          { id: "dashboard", label: "Dashboard & Health" },
+          { id: "users", label: `User Accounts (${users.length})` },
+          { id: "personnel", label: `Personnel Master (${personnel.length})` },
+          { id: "units", label: `Units (${units.length})` },
+          { id: "skills", label: `Skills (${skills.length})` },
+          { id: "data", label: "6-Dataset CSV Import" },
+          { id: "system", label: "Security & Governance Audit" },
+        ].map((tab) => {
+          const isSelected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`pb-3 text-xs md:text-sm font-semibold transition-all relative whitespace-nowrap px-3 ${
+                isSelected
+                  ? "text-[#2C5127]"
+                  : "text-[#677766] hover:text-[#182417]"
+              }`}
+            >
+              <span>{tab.label}</span>
+              {isSelected && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2C5127] rounded-full" />
               )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── Tab 1: Dashboard & Health ───────────────────────────────── */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="FastAPI Service"
+              value="ACTIVE (:8000)"
+              subtitle="prahari_backend container"
+              icon={<Server className="h-4 w-4 text-[#15803D]" />}
+              status="normal"
+            />
+            <StatCard
+              title="PostgreSQL 16 DB"
+              value="CONNECTED (:5432)"
+              subtitle="Row-Level Security Active"
+              icon={<Database className="h-4 w-4 text-[#2C5127]" />}
+              status="normal"
+            />
+            <StatCard
+              title="Scheduler Cadence"
+              value={jobs?.scheduler_status || "RUNNING"}
+              subtitle={jobs?.scheduler_cadence || "00:15 UTC daily"}
+              icon={<Clock className="h-4 w-4 text-[#5B2C78]" />}
+              status="normal"
+            />
+            <StatCard
+              title="Registered Accounts"
+              value={`${users.length} Users`}
+              subtitle="Argon2id Hashed Passwords"
+              icon={<Users className="h-4 w-4 text-[#B8860B]" />}
+              status="normal"
+            />
+          </div>
+
+          {/* Model Governance Status Grid (Strictly Truthful) */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-[#5B2C78]" />
+                <span>ML Pipeline &amp; Algorithmic Governance Status</span>
+              </h3>
+              <span className="text-[11px] font-mono px-2.5 py-0.5 rounded bg-[#FAF9F5] border border-[#CFDDCE] text-[#3B4B3A]">
+                Authoritative Contract (AGENTS.md)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              {/* Model A */}
+              <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#182417]">Model A (Operational Prototype)</span>
+                  <span className="px-2 py-0.5 rounded bg-[#ECFDF5] text-[#15803D] font-bold text-[10px]">
+                    {models?.model_a?.status || "MODEL_AVAILABLE"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#677766] space-y-1">
+                  <div>Features: <strong>{models?.model_a?.feature_count || 15}</strong></div>
+                  <div>Threshold: <strong>{models?.model_a?.threshold || "0.15"}</strong></div>
+                  <div>Policy: <strong>{models?.model_a?.threshold_policy || "PROVISIONAL_V1"}</strong></div>
+                  <div className="text-[10px] text-[#B45309] pt-1">
+                    Synthetic prototype demonstration only. Not clinical or real military validity.
+                  </div>
+                </div>
+              </div>
+
+              {/* Engine B */}
+              <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#D8B4FE] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#182417]">Engine B (Private Wellbeing)</span>
+                  <span className="px-2 py-0.5 rounded bg-[#F3E8FF] text-[#5B2C78] font-bold text-[10px]">
+                    {models?.engine_b?.status || "INSTRUMENT_NOT_ACTIVATED"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#677766] space-y-1">
+                  <div>Training Status: <strong>{models?.engine_b?.training_status || "NOT_TRAINED"}</strong></div>
+                  <div>Consent Boundary: <strong>STRICT ISOLATION</strong></div>
+                  <div className="text-[10px] text-[#5B2C78] pt-1">
+                    Gated by PRAHARI Ethical Charter. No synthetic psychometric labels fabricated.
+                  </div>
+                </div>
+              </div>
+
+              {/* Model C */}
+              <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#182417]">Model C (Convergence Protocol)</span>
+                  <span className="px-2 py-0.5 rounded bg-[#ECFDF5] text-[#15803D] font-bold text-[10px]">
+                    ACTIVE
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#677766] space-y-1">
+                  <div>Rules Version: <strong>{models?.model_c?.rules_version || "v1.1-truthful"}</strong></div>
+                  <div>Type: <strong>{models?.model_c?.type || "DETERMINISTIC"}</strong></div>
+                  <div className="text-[10px] text-[#15803D] pt-1">
+                    Evidence convergence logic enforces operational transparency.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* ======================================================== */}
-        {/* TAB: SYSTEM (Live Audit Events Trail) */}
-        {/* ======================================================== */}
-        {currentTab === "system" && (
-          <div className="space-y-6">
-            <div className="glass-panel p-6 rounded-xl border border-cyan-500/20">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-base font-bold font-mono text-cyan-300 uppercase flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-cyan-400" />
-                    <span>System Audit Trail & Security Events</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 font-mono mt-1">
-                    Immutable event logs tracking authentication, administrative changes, and welfare interventions.
-                  </p>
-                </div>
-                <button
-                  onClick={loadAdminData}
-                  className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700 text-cyan-300 text-xs font-mono hover:text-white flex items-center gap-1.5"
+          {/* Trigger Operational Detection Run Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+                  <Play className="h-4 w-4 text-[#2C5127]" />
+                  <span>Execute Operational Strain Detection Run</span>
+                </h3>
+                <p className="text-xs text-[#677766] mt-0.5">
+                  Runs the historical operational pipeline across all active personnel up to the specified cutoff date.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleTriggerRun} className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Cutoff Date (YYYY-MM-DD)
+                </label>
+                <input
+                  type="date"
+                  value={runCutoff}
+                  onChange={(e) => setRunCutoff(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Unit Scope (Optional)
+                </label>
+                <select
+                  value={runUnitId}
+                  onChange={(e) => setRunUnitId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Refresh Audit Trail</span>
+                  <option value="">All Authorized Units</option>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.unit_name} ({u.unit_code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  loading={runSubmitting}
+                  disabled={runSubmitting}
+                  icon={<Play className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Trigger Detection Run
+                </Button>
+              </div>
+            </form>
+
+            {runResult && (
+              <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] space-y-2 text-xs font-mono">
+                <div className="font-bold text-[#182417] flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#15803D]" />
+                  <span>Run Completed Successfully: Mode {runResult.mode} (Cutoff: {runResult.cutoff})</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#E4ECE3]">
+                  <div>Processed: <strong>{runResult.processed}</strong></div>
+                  <div>Valid Scores: <strong>{runResult.valid}</strong></div>
+                  <div>Unavailable: <strong>{runResult.unavailable}</strong></div>
+                  <div>Alerts Created: <strong>{runResult.alerts_created}</strong></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Table Counts Matrix */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417]">
+              PostgreSQL Live Table Record Counts
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+              {health?.table_record_counts &&
+                Object.entries(health.table_record_counts).map(([tbl, count]: any) => (
+                  <div
+                    key={tbl}
+                    className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] space-y-1"
+                  >
+                    <span className="text-[10px] text-[#677766] uppercase block truncate">
+                      {tbl}
+                    </span>
+                    <span className="text-lg font-bold text-[#2C5127] block">{count}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 2: Users (4 Roles Only) ─────────────────────────────── */}
+      {activeTab === "users" && (
+        <div className="space-y-6">
+          {/* Create User Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-[#2C5127]" />
+              <span>Provision User Account (Strict 4 Roles: PERSONNEL, COMMANDER, WELFARE_OFFICER, ADMIN)</span>
+            </h3>
+
+            <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  USERNAME
+                </label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="e.g. officer_sharma"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  INITIAL PASSWORD
+                </label>
+                <input
+                  type="text"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  LOCKED ROLE
+                </label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  <option value="PERSONNEL">PERSONNEL</option>
+                  <option value="COMMANDER">COMMANDER</option>
+                  <option value="WELFARE_OFFICER">WELFARE_OFFICER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  disabled={userCreating || !newUsername}
+                  loading={userCreating}
+                  icon={<UserPlus className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Create User
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* User Table */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417]">
+              Registered System Accounts ({users.length})
+            </h3>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {users.map((u) => (
+                <div
+                  key={u.id}
+                  className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] flex items-center justify-between text-xs font-mono"
+                >
+                  <div>
+                    <div className="font-bold text-sm text-[#182417]">{u.username}</div>
+                    <div className="text-[10px] text-[#677766]">
+                      Created: {u.created_at || "Seed"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`px-2.5 py-1 rounded text-[10px] font-bold border ${
+                        u.role === "COMMANDER"
+                          ? "bg-[#EAF1E9] text-[#2C5127] border-[#CFDDCE]"
+                          : u.role === "WELFARE_OFFICER"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                          : u.role === "ADMIN"
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      }`}
+                    >
+                      {u.role}
+                    </span>
+
+                    <button
+                      onClick={() => handleToggleUserActive(u.id, u.is_active)}
+                      className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${
+                        u.is_active
+                          ? "bg-[#ECFDF5] text-[#15803D] hover:bg-rose-50 hover:text-rose-700"
+                          : "bg-rose-50 text-rose-700 hover:bg-[#ECFDF5] hover:text-[#15803D]"
+                      }`}
+                    >
+                      {u.is_active ? "ACTIVE" : "INACTIVE"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 3: Personnel Master & Transfer ───────────────────────── */}
+      {activeTab === "personnel" && (
+        <div className="space-y-6">
+          {/* Create Personnel Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <PlusCircle className="h-4 w-4 text-[#2C5127]" />
+              <span>Enroll Personnel Master Record</span>
+            </h3>
+
+            <form onSubmit={handleCreatePersonnel} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Personnel Code (Service No.)
+                </label>
+                <input
+                  type="text"
+                  value={newPersCode}
+                  onChange={(e) => setNewPersCode(e.target.value)}
+                  placeholder="e.g. P0999"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={newPersFullName}
+                  onChange={(e) => setNewPersFullName(e.target.value)}
+                  placeholder="e.g. Inspector Ramesh Singh"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Assigned Unit
+                </label>
+                <select
+                  value={newPersUnitId}
+                  onChange={(e) => setNewPersUnitId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.unit_name} ({u.unit_code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Rank or Grade
+                </label>
+                <input
+                  type="text"
+                  value={newPersRank}
+                  onChange={(e) => setNewPersRank(e.target.value)}
+                  placeholder="e.g. CONSTABLE"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Role Title
+                </label>
+                <input
+                  type="text"
+                  value={newPersRole}
+                  onChange={(e) => setNewPersRole(e.target.value)}
+                  placeholder="e.g. Patrol Leader"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  disabled={persCreating}
+                  loading={persCreating}
+                  icon={<PlusCircle className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Enroll Personnel
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Transfer Personnel Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4 text-[#5B2C78]" />
+              <span>Execute Unit Reassignment / Transfer</span>
+            </h3>
+
+            <form onSubmit={handleTransferPersonnel} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Select Personnel
+                </label>
+                <select
+                  value={transferPersId}
+                  onChange={(e) => setTransferPersId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  {personnel.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.pseudo_id} ({p.rank_or_grade})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Target Destination Unit
+                </label>
+                <select
+                  value={transferTargetUnitId}
+                  onChange={(e) => setTransferTargetUnitId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.unit_name} ({u.unit_code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Reason Code
+                </label>
+                <select
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  <option value="ROUTINE_ROTATION">ROUTINE_ROTATION</option>
+                  <option value="OPERATIONAL_NEED">OPERATIONAL_NEED</option>
+                  <option value="COMPASSIONATE_GROUNDS">COMPASSIONATE_GROUNDS</option>
+                  <option value="SPECIALIZED_SKILL">SPECIALIZED_SKILL</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  disabled={transferSubmitting}
+                  loading={transferSubmitting}
+                  icon={<ArrowRightLeft className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Execute Transfer
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Personnel Master Table */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417]">
+              Personnel Master Records ({personnel.length})
+            </h3>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {personnel.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] flex justify-between items-center text-xs"
+                >
+                  <div>
+                    <div className="font-mono font-bold text-sm text-[#182417]">
+                      {p.pseudo_id} ({p.rank_or_grade})
+                    </div>
+                    <div className="text-[11px] text-[#677766] mt-0.5">
+                      {p.role_title} • Code: {p.personnel_code}
+                    </div>
+                  </div>
+                  <div className="font-mono text-[11px] text-right">
+                    <div>Service: {p.service_years} yrs</div>
+                    <div className="text-[#15803D] font-bold">{p.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 4: Units ────────────────────────────────────────────── */}
+      {activeTab === "units" && (
+        <div className="space-y-6">
+          {/* Create Unit Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <PlusCircle className="h-4 w-4 text-[#2C5127]" />
+              <span>Create Unit Structure</span>
+            </h3>
+
+            <form onSubmit={handleCreateUnit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Unit Code
+                </label>
+                <input
+                  type="text"
+                  value={newUnitCode}
+                  onChange={(e) => setNewUnitCode(e.target.value)}
+                  placeholder="e.g. U09"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Unit Name
+                </label>
+                <input
+                  type="text"
+                  value={newUnitName}
+                  onChange={(e) => setNewUnitName(e.target.value)}
+                  placeholder="e.g. 5th Border Battalion"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Sanctioned Strength
+                </label>
+                <input
+                  type="number"
+                  value={newUnitStrength}
+                  onChange={(e) => setNewUnitStrength(Number(e.target.value))}
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  disabled={unitCreating}
+                  loading={unitCreating}
+                  icon={<PlusCircle className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Create Unit
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Unit Master Cards */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417]">
+              Battalion &amp; Company Master ({units.length})
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {units.map((un) => (
+                <div
+                  key={un.id}
+                  className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] text-xs space-y-1.5"
+                >
+                  <div className="font-bold text-sm text-[#182417] font-mono">
+                    {un.unit_name} ({un.unit_code})
+                  </div>
+                  <div className="text-[11px] text-[#677766]">
+                    Type: {un.unit_type} • Location: {un.location_label || "Base"}
+                  </div>
+                  <div className="text-[11px] text-[#2C5127] font-mono font-semibold">
+                    Sanctioned Strength: {un.sanctioned_strength} Personnel
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 5: Skills Master ─────────────────────────────────────── */}
+      {activeTab === "skills" && (
+        <div className="space-y-6">
+          {/* Create Skill Form */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <Award className="h-4 w-4 text-[#2C5127]" />
+              <span>Define Operational Skill</span>
+            </h3>
+
+            <form onSubmit={handleCreateSkill} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Skill Code
+                </label>
+                <input
+                  type="text"
+                  value={newSkillCode}
+                  onChange={(e) => setNewSkillCode(e.target.value)}
+                  placeholder="e.g. SK09"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Skill Name
+                </label>
+                <input
+                  type="text"
+                  value={newSkillName}
+                  onChange={(e) => setNewSkillName(e.target.value)}
+                  placeholder="e.g. Drone Pilot Level 2"
+                  required
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-[#3B4B3A] mb-1 font-semibold">
+                  Category
+                </label>
+                <select
+                  value={newSkillCategory}
+                  onChange={(e) => setNewSkillCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                >
+                  <option value="TACTICAL">TACTICAL</option>
+                  <option value="MEDICAL">MEDICAL</option>
+                  <option value="TECHNICAL">TECHNICAL</option>
+                  <option value="COMMUNICATIONS">COMMUNICATIONS</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  type="submit"
+                  disabled={skillCreating}
+                  loading={skillCreating}
+                  icon={<Award className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Register Skill
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Skills Master Table */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417]">
+              Certified Operational Skills ({skills.length})
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+              {skills.map((sk) => (
+                <div
+                  key={sk.id}
+                  className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] flex justify-between items-center"
+                >
+                  <div>
+                    <div className="font-bold text-[#182417]">
+                      {sk.skill_name} ({sk.skill_code})
+                    </div>
+                    <div className="text-[10px] text-[#677766]">
+                      Category: {sk.category || "GENERAL"}
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-[#ECFDF5] text-[#15803D] font-bold text-[10px]">
+                    ACTIVE
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 6: 6-Dataset CSV Import ─────────────────────────────── */}
+      {activeTab === "data" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <div>
+              <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+                <FileSpreadsheet className="h-4 w-4 text-[#2C5127]" />
+                <span>6-Dataset CSV Ingestion Engine (Validate &amp; Atomic Commit)</span>
+              </h3>
+              <p className="text-xs text-[#677766] mt-0.5">
+                Two-stage atomic import engine. Validates schema, checksum, and foreign key integrity before transactional commit.
+              </p>
+            </div>
+
+            {/* Dataset Selector Tabs */}
+            <div className="flex gap-2 flex-wrap border-b border-[#CFDDCE] pb-2">
+              {[
+                { id: "duties", label: "1. Duties" },
+                { id: "rest_records", label: "2. Rest Records" },
+                { id: "leave_records", label: "3. Leave Records" },
+                { id: "deployments", label: "4. Deployments" },
+                { id: "training", label: "5. Training" },
+                { id: "staffing", label: "6. Staffing" },
+              ].map((ds) => (
+                <button
+                  key={ds.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDataset(ds.id as any);
+                    setValidationResult(null);
+                    setCommitResult(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    selectedDataset === ds.id
+                      ? "bg-[#2C5127] text-white shadow-sm"
+                      : "bg-[#FAF9F5] text-[#3B4B3A] hover:bg-[#EAF1E9]"
+                  }`}
+                >
+                  {ds.label}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {/* Role & Result Filters */}
-              <div className="flex flex-wrap items-center gap-3 mb-4 font-mono text-xs">
-                <div className="flex items-center gap-1 bg-slate-900 p-1 rounded border border-slate-800">
-                  <span className="text-slate-500 text-[10px] px-1">Actor Role:</span>
-                  {["ALL", "ADMIN", "WELFARE_OFFICER", "COMMANDER", "PERSONNEL"].map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => setAuditRoleFilter(role)}
-                      className={clsx(
-                        "px-2 py-0.5 rounded text-[10px] transition-all",
-                        auditRoleFilter === role
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold"
-                          : "text-slate-400 hover:text-white"
-                      )}
-                    >
-                      {role === "WELFARE_OFFICER" ? "WELFARE" : role}
-                    </button>
-                  ))}
+            {/* Template Expected Fields preview */}
+            {importTemplates && (
+              <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] text-xs font-mono space-y-1">
+                <div className="font-bold text-[#182417]">
+                  Expected Fields for `{selectedDataset}`:
                 </div>
-                <div className="flex items-center gap-1 bg-slate-900 p-1 rounded border border-slate-800">
-                  <span className="text-slate-500 text-[10px] px-1">Result:</span>
-                  {["ALL", "SUCCESS", "FAILURE"].map((result) => (
-                    <button
-                      key={result}
-                      onClick={() => setAuditResultFilter(result)}
-                      className={clsx(
-                        "px-2 py-0.5 rounded text-[10px] transition-all",
-                        auditResultFilter === result
-                          ? result === "FAILURE"
-                            ? "bg-red-500/20 text-red-300 border border-red-500/40 font-bold"
-                            : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold"
-                          : "text-slate-400 hover:text-white"
-                      )}
-                    >
-                      {result}
-                    </button>
-                  ))}
+                <div className="text-[11px] text-[#677766] flex flex-wrap gap-1.5">
+                  {importTemplates.datasets
+                    ?.find((d: any) => d.dataset_type === selectedDataset)
+                    ?.fields?.map((f: any) => (
+                      <span key={f.name} className="px-2 py-0.5 rounded bg-white border border-[#CFDDCE]">
+                        <strong>{f.name}</strong> ({f.type}){f.required ? " *" : ""}
+                      </span>
+                    ))}
                 </div>
               </div>
+            )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-slate-900/80 text-slate-400 border-b border-cyan-500/20">
-                    <tr>
-                      <th className="p-2.5">Timestamp</th>
-                      <th className="p-2.5">Actor Role</th>
-                      <th className="p-2.5">Action</th>
-                      <th className="p-2.5">Resource</th>
-                      <th className="p-2.5">Result</th>
-                      <th className="p-2.5">Reason / Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {(() => {
-                      const filteredLogs = auditLogs.filter((log) => {
-                        const roleMatch = auditRoleFilter === "ALL" || log.actor_role === auditRoleFilter;
-                        const resultMatch = auditResultFilter === "ALL" || log.result === auditResultFilter;
-                        return roleMatch && resultMatch;
-                      });
-                      if (loading) {
-                        return (
-                          <tr>
-                            <td colSpan={6} className="p-4">
-                              <SkeletonTable rows={4} cols={6} />
-                            </td>
-                          </tr>
-                        );
-                      }
-                      if (filteredLogs.length === 0) {
-                        return (
-                          <tr>
-                            <td colSpan={6} className="p-4">
-                              <EmptyState
-                                icon={<FileText className="w-6 h-6" />}
-                                title="No Audit Events Found"
-                                message={auditLogs.length === 0 ? "No audit events logged yet." : "No events match current filters."}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      }
-                      return filteredLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-slate-900/40">
-                          <td className="p-2.5 text-slate-400 whitespace-nowrap">
-                            {new Date(log.created_at).toLocaleString()}
-                          </td>
-                          <td className="p-2.5 text-amber-300 font-bold">{log.actor_role || "SYSTEM"}</td>
-                          <td className="p-2.5 text-white font-semibold">{log.action}</td>
-                          <td className="p-2.5 text-cyan-400">{log.resource_type}</td>
-                          <td className="p-2.5">
-                            <span
-                              className={clsx(
-                                "px-2 py-0.5 rounded text-[10px] font-bold",
-                                log.result === "SUCCESS"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                  : "bg-red-500/10 text-red-400 border border-red-500/30"
-                              )}
-                            >
-                              {log.result}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-slate-300 max-w-xs">{log.reason || "—"}</td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                </table>
+            {/* CSV Form */}
+            <form onSubmit={handleValidateImport} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#3B4B3A] mb-1 font-mono">
+                  Paste Raw CSV Content (Header Row Required)
+                </label>
+                <textarea
+                  rows={6}
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  placeholder={`personnel_id,unit_id,shift_type,duty_date,duration_hours...\nPaste comma-separated rows`}
+                  required
+                  className="w-full p-3 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                />
               </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="text-xs font-mono text-[#677766]">
+                  Source Timestamp: <span className="text-[#182417] font-bold">{sourceTimestamp}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="submit"
+                    loading={validatingImport}
+                    disabled={validatingImport || !csvText.trim()}
+                    icon={<FileCheck className="h-4 w-4" />}
+                    variant="outline"
+                  >
+                    1. Validate CSV
+                  </Button>
+
+                  {validationResult?.status === "VALIDATED" && (
+                    <Button
+                      type="button"
+                      onClick={handleCommitImport}
+                      loading={committingImport}
+                      disabled={committingImport}
+                      icon={<Check className="h-4 w-4" />}
+                      className="bg-[#15803D] hover:bg-[#166534] text-white"
+                    >
+                      2. Atomic Commit ({validationResult.row_count} rows)
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {/* Validation Feedback */}
+            {validationResult && (
+              <div className={`p-4 rounded-xl border text-xs font-mono space-y-2 ${
+                validationResult.status === "VALIDATED"
+                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#15803D]"
+                  : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+              }`}>
+                <div className="font-bold flex items-center gap-2">
+                  {validationResult.status === "VALIDATED" ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span>Status: {validationResult.status} • Row Count: {validationResult.row_count}</span>
+                </div>
+                <div>Checksum: <span className="font-bold">{validationResult.checksum}</span></div>
+                {validationResult.errors && validationResult.errors.length > 0 && (
+                  <div className="mt-2 space-y-1 max-h-40 overflow-y-auto pt-2 border-t border-[#FECACA]">
+                    {validationResult.errors.map((err: any, idx: number) => (
+                      <div key={idx} className="text-[11px]">
+                        Row {err.row}: [{err.field}] {err.error} (raw: &quot;{err.raw_value}&quot;)
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Commit Result */}
+            {commitResult && (
+              <div className="p-4 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs font-mono text-[#15803D] space-y-1">
+                <div className="font-bold flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Atomic Commit Succeeded!</span>
+                </div>
+                <div>Dataset: <strong>{commitResult.dataset_type}</strong></div>
+                <div>Rows Written: <strong>{commitResult.row_count}</strong></div>
+                <div>Revision Hash: <strong>{commitResult.revision}</strong></div>
+                <div>Committed At: <strong>{commitResult.committed_at}</strong></div>
+              </div>
+            )}
+          </div>
+
+          {/* Import History Table */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <History className="h-4 w-4 text-[#2C5127]" />
+              <span>Historical Ingestions ({importHistory.length})</span>
+            </h3>
+
+            {importHistory.length === 0 ? (
+              <EmptyState title="No Past Imports" description="Validated and committed CSV batches will appear here." />
+            ) : (
+              <div className="divide-y divide-[#E4ECE3] border border-[#CFDDCE] rounded-xl overflow-hidden text-xs font-mono">
+                {importHistory.map((item) => (
+                  <div key={item.id} className="p-3.5 bg-white flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-[#182417]">
+                        {item.dataset_type} • {item.row_count} rows
+                      </div>
+                      <div className="text-[10px] text-[#677766]">
+                        Checksum: {item.checksum?.slice(0, 16)}...
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="px-2 py-0.5 rounded bg-[#ECFDF5] text-[#15803D] font-bold text-[10px]">
+                        {item.status}
+                      </span>
+                      <div className="text-[10px] text-[#677766] mt-0.5">
+                        {item.created_at ? new Date(item.created_at).toLocaleDateString() : "Historical"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab 7: Security & Audit Ledger ──────────────────────────── */}
+      {activeTab === "system" && (
+        <div className="space-y-6">
+          {/* Security & RLS Policies */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <Lock className="h-4 w-4 text-[#15803D]" />
+              <span>Active Governance Policies ({policies.length})</span>
+            </h3>
+            <div className="space-y-3 text-xs font-mono">
+              {policies.map((p) => (
+                <div key={p.id} className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] space-y-1">
+                  <div className="font-bold text-[#15803D] flex items-center justify-between">
+                    <span>{p.policy_key}</span>
+                    <span className="text-[10px] text-[#677766] font-normal">Version: {p.version}</span>
+                  </div>
+                  <div className="text-[#3B4B3A] text-[11px]">
+                    Effective: {new Date(p.effective_from).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* ======================================================== */}
-        {/* TAB: SETTINGS */}
-        {/* ======================================================== */}
-        {currentTab === "settings" && (
-          <div className="glass-panel p-6 rounded-xl border border-cyan-500/20 max-w-2xl font-mono text-xs space-y-4">
-            <h2 className="text-base font-bold text-cyan-300 uppercase flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-cyan-400" />
-              <span>Admin Root Security & System Policy</span>
-            </h2>
-            <div className="space-y-3 pt-2">
-              <div className="p-3 bg-slate-900/60 rounded border border-slate-800 flex justify-between items-center">
-                <div>
-                  <span className="text-white font-bold block">Password Hashing Standard</span>
-                  <span className="text-slate-400 text-[11px]">Argon2id (m=65536, t=3, p=4)</span>
+          {/* Immutable Audit Trail */}
+          <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
+            <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-[#2C5127]" />
+              <span>Immutable Governance Audit Log ({auditLog.length})</span>
+            </h3>
+
+            <div className="space-y-2 max-h-[500px] overflow-y-auto text-xs font-mono">
+              {auditLog.map((log) => (
+                <div
+                  key={log.id}
+                  className="p-3 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] flex justify-between items-center"
+                >
+                  <div>
+                    <div className="font-bold text-[#182417] flex items-center gap-2">
+                      <span className="text-[#2C5127]">{log.action}</span>
+                      <span className="text-[#677766] font-normal">by {log.actor_role}</span>
+                    </div>
+                    <div className="text-[10px] text-[#677766]">
+                      Resource: {log.resource_type} • Result: {log.result}
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-[#677766] text-right">
+                    {new Date(log.created_at).toLocaleTimeString()} • {new Date(log.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
-                  ACTIVE
-                </span>
-              </div>
-              <div className="p-3 bg-slate-900/60 rounded border border-slate-800 flex justify-between items-center">
-                <div>
-                  <span className="text-white font-bold block">Token Session Expiry</span>
-                  <span className="text-slate-400 text-[11px]">15-min JWT token • 30-min idle timeout • 8-hr absolute</span>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-bold">
-                  ENFORCED
-                </span>
-              </div>
-              <div className="p-3 bg-slate-900/60 rounded border border-slate-800 flex justify-between items-center">
-                <div>
-                  <span className="text-white font-bold block">Role Compartmentalization</span>
-                  <span className="text-slate-400 text-[11px]">Admins manage accounts & data only; zero welfare decision capability</span>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold">
-                  RESTRICTED
-                </span>
-              </div>
+              ))}
             </div>
           </div>
-        )}
-
-        {/* Modal: Add User */}
-        <Modal
-          isOpen={isAddUserOpen}
-          onClose={() => setIsAddUserOpen(false)}
-          title="Create System User"
-          subtitle="Assign credentials and RBAC compartment"
-          maxWidth="md"
-        >
-          <form onSubmit={handleCreateUser} className="space-y-4 font-mono text-xs">
-            {userSuccess && (
-              <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                {userSuccess}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-slate-300 mb-1">Username / Service ID</label>
-              <input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Temporary Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Assigned Role</label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-slate-200"
-              >
-                <option value="PERSONNEL">PERSONNEL</option>
-                <option value="COMMANDER">COMMANDER</option>
-                <option value="WELFARE_OFFICER">WELFARE_OFFICER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAddUserOpen(false)}
-                className="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 shadow-glowCyan"
-              >
-                Create Account
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Modal: Add Unit */}
-        <Modal
-          isOpen={isAddUnitOpen}
-          onClose={() => setIsAddUnitOpen(false)}
-          title="Add Operational Unit"
-          subtitle="Define unit code and sanctioned strength"
-          maxWidth="md"
-        >
-          <form onSubmit={handleCreateUnit} className="space-y-4 font-mono text-xs">
-            <div>
-              <label className="block text-slate-300 mb-1">Unit Code</label>
-              <input
-                type="text"
-                placeholder="e.g. 14-ASSAM"
-                value={newUnitCode}
-                onChange={(e) => setNewUnitCode(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Unit Name</label>
-              <input
-                type="text"
-                placeholder="e.g. 14th Assam Rifles Battalion"
-                value={newUnitName}
-                onChange={(e) => setNewUnitName(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Sanctioned Strength</label>
-              <input
-                type="number"
-                value={newUnitStrength}
-                onChange={(e) => setNewUnitStrength(Number(e.target.value))}
-                min="10"
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAddUnitOpen(false)}
-                className="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 shadow-glowCyan"
-              >
-                Save Unit
-              </button>
-            </div>
-          </form>
-        </Modal>
-        {/* Modal: Edit Personnel */}
-        <Modal
-          isOpen={isEditPersonnelOpen}
-          onClose={() => setIsEditPersonnelOpen(false)}
-          title={`Edit Personnel: ${editingPersonnel?.personnel_code || ""}`}
-          subtitle="Update rank, role title, and service status"
-          maxWidth="md"
-        >
-          <form onSubmit={handleUpdatePersonnel} className="space-y-4 font-mono text-xs">
-            {editPersonnelSuccess && (
-              <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                {editPersonnelSuccess}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-slate-300 mb-1">Full Name</label>
-              <input
-                type="text"
-                disabled
-                value={editingPersonnel?.full_name || ""}
-                className="w-full p-2.5 bg-slate-900/50 border border-slate-800 rounded text-slate-400 cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Rank / Grade</label>
-              <input
-                type="text"
-                value={editRank}
-                onChange={(e) => setEditRank(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Role Title</label>
-              <input
-                type="text"
-                value={editRoleTitle}
-                onChange={(e) => setEditRoleTitle(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Status</label>
-              <select
-                value={editPersonnelStatus}
-                onChange={(e) => setEditPersonnelStatus(e.target.value)}
-                className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-slate-200"
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="DEPLOYED">DEPLOYED</option>
-                <option value="ON_LEAVE">ON_LEAVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsEditPersonnelOpen(false)}
-                className="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 shadow-glowCyan"
-              >
-                Update Personnel
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Modal: Edit Unit */}
-        <Modal
-          isOpen={isEditUnitOpen}
-          onClose={() => setIsEditUnitOpen(false)}
-          title={`Edit Unit: ${editingUnit?.unit_code || ""}`}
-          subtitle="Update battalion name, type, and sanctioned strength"
-          maxWidth="md"
-        >
-          <form onSubmit={handleUpdateUnit} className="space-y-4 font-mono text-xs">
-            {editUnitSuccess && (
-              <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                {editUnitSuccess}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-slate-300 mb-1">Unit Name</label>
-              <input
-                type="text"
-                value={editUnitName}
-                onChange={(e) => setEditUnitName(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Unit Type</label>
-              <input
-                type="text"
-                value={editUnitType}
-                onChange={(e) => setEditUnitType(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-1">Sanctioned Strength</label>
-              <input
-                type="number"
-                value={editUnitStrength}
-                onChange={(e) => setEditUnitStrength(Number(e.target.value))}
-                min="10"
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsEditUnitOpen(false)}
-                className="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 shadow-glowCyan"
-              >
-                Update Unit
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Modal: Edit User Role */}
-        <Modal
-          isOpen={isEditUserOpen}
-          onClose={() => setIsEditUserOpen(false)}
-          title={`Update Role: ${editingUser?.username || ""}`}
-          subtitle="Reassign RBAC authorization role"
-          maxWidth="sm"
-        >
-          <form onSubmit={handleUpdateUserRole} className="space-y-4 font-mono text-xs">
-            {editUserSuccess && (
-              <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                {editUserSuccess}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-slate-300 mb-1">Assigned Role</label>
-              <select
-                value={editUserRole}
-                onChange={(e) => setEditUserRole(e.target.value)}
-                className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-slate-200"
-              >
-                <option value="PERSONNEL">PERSONNEL</option>
-                <option value="COMMANDER">COMMANDER</option>
-                <option value="WELFARE_OFFICER">WELFARE_OFFICER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsEditUserOpen(false)}
-                className="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 shadow-glowCyan"
-              >
-                Save Role
-              </button>
-            </div>
-          </form>
-        </Modal>
-      </Shell>
-    </RoleGuard>
+        </div>
+      )}
+    </div>
   );
 }

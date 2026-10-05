@@ -2,117 +2,104 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
     "./ui/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        prahari: {
-          // Backgrounds (Clean White + Off-white)
-          bg: "#F8F9FA",
-          surface: "#FFFFFF",
-          card: "#FFFFFF",
-          cardHover: "#F5F8F4",
-
-          // Defence Olive Green Theme
-          olive: "#385E31",
-          oliveDark: "#243D20",
-          oliveLight: "#4D7A45",
-          oliveSoft: "#EFF5EE",
-          oliveBorder: "#CDE0CB",
-
-          // Navigation & Headers (Deep Military Olive)
-          navy: "#243D20",
-          navyMid: "#2E4F28",
-          navySoft: "#385E31",
-
-          // Primary accent (mapped to Olive for seamless compatibility)
-          blue: "#385E31",
-          blueLight: "#4D7A45",
-          blueSoft: "#EFF5EE",
-
-          // Typography (Charcoal with Olive undertone)
-          textPrimary: "#1C281A",
-          textSecondary: "#465444",
-          textMuted: "#728070",
-
-          // Structural Borders
-          border: "#E1E8DF",
-          borderDark: "#C9D4C7",
-
-          // Welfare Risk Status Tiers (Preserved Semantics)
-          low: "#2E7D32",       // LOW risk (0-39) — stable
-          lowBg: "#E8F5E9",
-          lowBorder: "#A5D6A7",
-          med: "#F57C00",       // MEDIUM risk (40-69) — watch
-          medBg: "#FFF3E0",
-          medBorder: "#FFCC80",
-          high: "#C62828",      // HIGH risk (70-100) — attention
-          highBg: "#FFEBEE",
-          highBorder: "#EF9A9A",
-
-          // Wellbeing subtle accent
-          violet: "#5C4A72",
-          violetBg: "#F4EFF8",
-          violetBorder: "#D4C7DF",
-
-          // Gold for PRAHARI identity / badges
-          gold: "#D98E04",
-          goldBg: "#FEF7E8",
+        background: {
+          DEFAULT: "var(--background)",
+          secondary: "var(--background-secondary)",
+          cream: "#FAF9F5",
         },
-        swasti: {
-          bg: "#F8F9FA",
-          surface: "#FFFFFF",
-          card: "#FFFFFF",
-          cardHover: "#F5F8F4",
-          olive: "#385E31",
-          oliveDark: "#243D20",
-          oliveLight: "#4D7A45",
-          oliveSoft: "#EFF5EE",
-          oliveBorder: "#CDE0CB",
-          navy: "#243D20",
-          navyMid: "#2E4F28",
-          navySoft: "#385E31",
-          blue: "#385E31",
-          blueLight: "#4D7A45",
-          blueSoft: "#EFF5EE",
-          textPrimary: "#1C281A",
-          textSecondary: "#465444",
-          textMuted: "#728070",
-          border: "#E1E8DF",
-          borderDark: "#C9D4C7",
-          low: "#2E7D32",
-          lowBg: "#E8F5E9",
-          lowBorder: "#A5D6A7",
-          med: "#F57C00",
-          medBg: "#FFF3E0",
-          medBorder: "#FFCC80",
-          high: "#C62828",
-          highBg: "#FFEBEE",
-          highBorder: "#EF9A9A",
-          violet: "#5C4A72",
-          violetBg: "#F4EFF8",
-          violetBorder: "#D4C7DF",
-          gold: "#D98E04",
-          goldBg: "#FEF7E8",
-        }
+        surface: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+          hover: "var(--surface-hover)",
+        },
+        text: {
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
+          disabled: "var(--text-disabled)",
+        },
+        primary: {
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          muted: "var(--primary-muted)",
+        },
+        border: {
+          subtle: "var(--border-subtle)",
+          DEFAULT: "var(--border-default)",
+          strong: "var(--border-strong)",
+          focus: "var(--border-focus)",
+        },
+        state: {
+          normal: "var(--state-normal)",
+          "normal-bg": "var(--state-normal-bg)",
+          elevated: "var(--state-elevated)",
+          "elevated-bg": "var(--state-elevated-bg)",
+          critical: "var(--state-critical)",
+          "critical-bg": "var(--state-critical-bg)",
+          info: "var(--state-info)",
+          "info-bg": "var(--state-info-bg)",
+          neutral: "var(--state-neutral)",
+          "neutral-bg": "var(--state-neutral-bg)",
+        },
+        // Dedicated PRAHARI Defence Palette
+        olive: {
+          50: "#f4f7f3",
+          100: "#e5ede3",
+          200: "#cbddc7",
+          300: "#a6c3a0",
+          400: "#7aa373",
+          500: "#578450",
+          600: "#436a3d",
+          700: "#365332",
+          800: "#2d442a",
+          900: "#243722",
+          950: "#142013",
+        },
+        forest: {
+          900: "#1A2E1A",
+          950: "#101D10",
+        },
+        cream: {
+          50: "#FDFCF9",
+          100: "#FAF9F5",
+          200: "#F4F1EA",
+          300: "#EBE6DC",
+        },
+        sand: {
+          50: "#FBF9F4",
+          100: "#F7F3E9",
+          200: "#EFE6D5",
+          300: "#DFD2B8",
+        },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        mono: ["JetBrains Mono", "Consolas", "Courier New", "ui-monospace", "monospace"],
+        serif: ["'Playfair Display'", "Georgia", "Cambria", "serif"],
+        display: ["'Playfair Display'", "Georgia", "serif"],
+        sans: ["'Inter'", "system-ui", "-apple-system", "sans-serif"],
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgba(28, 40, 26, 0.05), 0 1px 2px 0 rgba(28, 40, 26, 0.03)",
-        cardHover: "0 4px 14px 0 rgba(28, 40, 26, 0.08)",
-        nav: "0 2px 8px 0 rgba(36, 61, 32, 0.20)",
-        modal: "0 20px 60px 0 rgba(28, 40, 26, 0.18)",
+        editorial: "0 2px 10px rgba(20, 32, 19, 0.05), 0 1px 3px rgba(20, 32, 19, 0.03)",
+        card: "0 4px 20px -2px rgba(20, 32, 19, 0.06), 0 2px 6px -1px rgba(20, 32, 19, 0.03)",
+        cardHover: "0 10px 30px -4px rgba(20, 32, 19, 0.1), 0 4px 10px -2px rgba(20, 32, 19, 0.04)",
+        dropdown: "0 12px 32px -4px rgba(20, 32, 19, 0.15), 0 4px 12px -2px rgba(20, 32, 19, 0.06)",
+        modal: "0 24px 64px -12px rgba(16, 29, 16, 0.25)",
       },
       borderRadius: {
-        card: "12px",
-      }
+        sm: "6px",
+        md: "8px",
+        lg: "12px",
+        xl: "16px",
+        "2xl": "20px",
+        "3xl": "24px",
+      },
     },
   },
   plugins: [],

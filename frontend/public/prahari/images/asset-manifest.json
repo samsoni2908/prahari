@@ -1,0 +1,81 @@
+{
+  "assets": [
+    {
+      "file": "/prahari/images/hero-force.webp",
+      "width": 2400,
+      "height": 1350,
+      "use": "Homepage hero / login visual",
+      "alt": "Defence personnel in a mountain environment at sunrise"
+    },
+    {
+      "file": "/prahari/images/mountain-patrol.webp",
+      "width": 1600,
+      "height": 1200,
+      "use": "Personnel / role card / about section",
+      "alt": "Personnel moving through a mountain environment"
+    },
+    {
+      "file": "/prahari/images/india-flag.webp",
+      "width": 1200,
+      "height": 1400,
+      "use": "Mission / national context accent section",
+      "alt": "Indian flag in a mountain setting"
+    },
+    {
+      "file": "/prahari/images/field-base.webp",
+      "width": 1400,
+      "height": 1200,
+      "use": "Operational context / readiness section",
+      "alt": "Defence vehicles at a field base"
+    },
+    {
+      "file": "/prahari/images/naval-readiness.webp",
+      "width": 1600,
+      "height": 1100,
+      "use": "Cross-service readiness / feature card",
+      "alt": "Naval vessel at sea"
+    },
+    {
+      "file": "/prahari/images/sunset-patrol.webp",
+      "width": 1200,
+      "height": 1400,
+      "use": "CTA / mobile background / decorative card",
+      "alt": "Personnel silhouettes at sunset"
+    },
+    {
+      "file": "/prahari/images/monitoring-room.webp",
+      "width": 1800,
+      "height": 1200,
+      "use": "AI/data intelligence section",
+      "alt": "Operations analyst viewing monitoring dashboards"
+    },
+    {
+      "file": "/prahari/images/medical-support.webp",
+      "width": 1400,
+      "height": 1000,
+      "use": "Welfare intervention / support section",
+      "alt": "Personnel receiving professional support"
+    },
+    {
+      "file": "/prahari/images/training.webp",
+      "width": 1600,
+      "height": 1000,
+      "use": "Readiness / resilience section",
+      "alt": "Personnel training together outdoors"
+    },
+    {
+      "file": "/prahari/images/mountain-landscape.webp",
+      "width": 2000,
+      "height": 1200,
+      "use": "Section background / footer CTA / neutral landscape",
+      "alt": "Mountain landscape"
+    },
+    {
+      "file": "/prahari/images/camo-pattern.webp",
+      "width": 1200,
+      "height": 1200,
+      "use": "Very subtle decorative texture only",
+      "alt": ""
+    }
+  ]
+}

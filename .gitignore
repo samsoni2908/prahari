@@ -1,107 +1,34 @@
-# Environment & Secrets
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-*.cert
-*.crt
-*.pfx
-*.p12
 
-# Python Runtime & Packaging
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.pytest_cache/
-.coverage
-htmlcov/
-.venv/
-env/
-venv/
-ENV/
-
-# Tests & Automated Test Suites (Excluded from public repo)
-backend/tests/
-tests/
-test/
-*_test.py
-test_*.py
-conftest.py
-
-# Data, Datasets, Archives & CSV Seeds (Excluded from public repo)
-*.csv
-*.tsv
-data/
-*.zip
-*.tar
-*.tar.gz
-*.tgz
-
-# Documentation & Markdown Rules (Strictly ONLY root README.md is permitted)
-*.md
-!README.md
-docs/
-backend/alembic/README
-
-# Internal Notes, Scratches & Utility Scripts
-scratch/
-scripts/
-backend/app/_pending/
-
-# Node & Next.js
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-*.tsbuildinfo
-
-# Mobile Builds & Artifacts
-mobile/android/.gradle/
-mobile/android/app/build/
-mobile/android/local.properties
-*.apk
-*.aab
-
-# Logs & Debug
 *.log
-logs/
 
-# Database & Runtime Local Data
-*.sqlite3
-*.db
-postgres_data/
-
-# OS Specific
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE & Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Docker / Deployment local overrides
-docker-compose.override.yml
-docker-compose.prod.yml
+.DS_Store
+Thumbs.db
+
+# PRAHARI internal agent specifications
+AGENTS.md
+MEMORY.md
+architecture.md
+database.md
+design.md
+prd.md
+rules.md
+task.md

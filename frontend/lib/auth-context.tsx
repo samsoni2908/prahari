@@ -2,14 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "./api";
+import { authApi, type AuthUser as ApiAuthUser } from "./api";
 
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: "PERSONNEL" | "COMMANDER" | "WELFARE_OFFICER" | "ADMIN";
-  personnel_id?: string | null;
-  unit_id?: string | null;
+export interface AuthUser extends ApiAuthUser {
   full_name?: string | null;
   unit_code?: string | null;
 }
@@ -38,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      const userData = await api.get<AuthUser>("/auth/me");
+      const userData = await authApi.me();
       setUser(userData);
     } catch {
       setUser(null);
@@ -54,13 +49,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<AuthUser> => {
     setIsLoading(true);
     try {
-      const res = await api.post("/auth/login", { username, password });
+      const res = await authApi.login(username, password);
       const authenticatedUser: AuthUser = res.user;
 
       // Mobile Lockout for Admin: Administrative functions restricted to Web Station
       if (typeof window !== "undefined" && (navigator.userAgent.includes("PrahariMobileApp") || navigator.userAgent.includes("SwastiMobileApp"))) {
         if (authenticatedUser.role === "ADMIN") {
-          await api.post("/auth/logout").catch(() => {});
+          await authApi.logout();
           setUser(null);
           setIsLoading(false);
           throw new Error("Access Denied: Administrative functions require the SWASTI Secure Web Console. Mobile access is restricted to Personnel, Commander, and Welfare roles.");
@@ -83,13 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
-      await api.post("/auth/logout");
-    } catch {
-      // ignore logout network errors
-    } finally {
+      await authApi.logout();
       setUser(null);
-      setIsLoading(false);
       router.push("/login");
+    } finally {
+      setIsLoading(false);
     }
   };
 
