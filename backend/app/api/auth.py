@@ -159,7 +159,7 @@ async def csrf(response: Response, request: Request, for_login: bool = False,
         except (ValueError, KeyError):
             pass
     token = issue_csrf(jti)
-    response.set_cookie("prahari_csrf", token, secure=settings.ENVIRONMENT != "development", samesite="lax", path="/api/v1")
+    response.set_cookie("prahari_csrf", token, secure=settings.ENVIRONMENT.lower() != "development", samesite="lax", path="/api/v1")
     response.headers["Cache-Control"] = "no-store"
     return {"csrf_token": token}
 

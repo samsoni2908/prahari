@@ -1,4 +1,7 @@
 import pytest
+from pydantic import ValidationError
+
+from app.api.admin import CreateUserRequest
 from app.config import settings
 
 
@@ -35,3 +38,8 @@ def test_wsi_reference_benchmark():
         + settings.WSI_WEIGHT_S * s
     )
     assert round(calculated_wsi, 2) == 77.50
+
+
+def test_admin_account_creation_rejects_short_passwords():
+    with pytest.raises(ValidationError):
+        CreateUserRequest(username="prepared-user", password="too-short", role="PERSONNEL")

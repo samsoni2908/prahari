@@ -18,7 +18,12 @@ def test_four_role_frontend_flows_real_login_and_postgres():
         fixture.setUp()
         fixture.test_real_artifact_high_progression()
         usernames = {}
+        other_unit = uuid.uuid4()
         with fixture.engine.begin() as connection:
+            connection.execute(insert(fixtures.TABLES["units"]).values(
+                id=other_unit, unit_code=str(other_unit), unit_name="Out-of-scope synthetic unit",
+                unit_type="TEST", sanctioned_strength=5,
+            ))
             for role in ("PERSONNEL", "COMMANDER", "WELFARE_OFFICER", "ADMIN"):
                 identifier = fixture.admin if role == "ADMIN" else uuid.uuid4()
                 usernames[role] = str(identifier)
@@ -51,6 +56,13 @@ def test_four_role_frontend_flows_real_login_and_postgres():
                     response = await client.request(method, "/api/v1"+path, json=body, headers=headers)
                     assert response.status_code == expected, (role, method, path, response.text)
                     return response.json()
+
+                for role in ("PERSONNEL", "COMMANDER", "WELFARE_OFFICER"):
+                    visible_units = await call(role, "GET", "/units")
+                    assert [unit["id"] for unit in visible_units] == [str(fixture.unit)]
+                    assert str(other_unit) not in str(visible_units)
+                admin_units = await call("ADMIN", "GET", "/units")
+                assert {unit["id"] for unit in admin_units} >= {str(fixture.unit), str(other_unit)}
 
                 for path in ("/auth/me", "/personnel/me", "/personnel/me/risk", "/personnel/me/duties",
                              "/personnel/me/rest", "/personnel/me/leave", "/personnel/support-requests", "/notifications"):

@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -23,7 +23,7 @@ router = APIRouter(
 class CreateUserRequest(BaseModel):
     model_config = {"extra": "forbid"}
     username: str
-    password: str
+    password: str = Field(min_length=12, max_length=256)
     role: str
     unit_id: Optional[str] = None
     personnel_id: Optional[str] = None
