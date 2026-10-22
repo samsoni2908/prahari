@@ -14,7 +14,7 @@ export interface RiskBadgeProps {
 }
 
 export const RiskBadge: React.FC<RiskBadgeProps> = ({
-  level = "LOW",
+  level = "MODEL_UNAVAILABLE",
   score,
   showScore = false,
   size = "md",

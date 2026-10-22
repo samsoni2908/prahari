@@ -1,0 +1,5 @@
+id,scenario_id,actor_user_id,decision,reason,decided_at
+8120ac86-771d-b547-bffe-18ff3afd1dd0,e5fadbc2-a7e1-c010-edc2-970b86ae92ea,dc81daa3-9400-773f-b933-f7d3120bfd15,ACCEPT,Staffing coverage and skill mix preserved; proceed.,2026-03-27T11:00:00Z
+265147d4-271a-62ed-4d83-ed14d08c33e1,7a26fdc9-6009-c190-e5bd-5c86646fdb6c,5beaf742-5d3e-1988-bcd9-a06dfd92bd5c,MODIFY,Approved with a smaller rest buffer to protect coverage.,2026-04-16T11:00:00Z
+94ae1afb-d298-8240-a79f-6bd5c6a9311f,6d216a92-ca12-e2f8-e362-bda2fc506666,61e2b67a-741a-5d38-334a-711badf57c4d,REJECT,Insufficient staffing headroom for this unit at this time.,2026-05-06T11:00:00Z
+fa4d9378-efc6-29b6-8da8-9b5b07074938,08f24d0f-3473-3a78-b1ba-2c80295ffe0a,c32979e3-947a-3e56-ab26-7a8a3e4fb4c5,ACCEPT,Staffing coverage and skill mix preserved; proceed.,2026-05-26T11:00:00Z

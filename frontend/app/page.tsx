@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,31 +26,15 @@ import {
   Sliders,
   Sparkles,
 } from "lucide-react";
-import { getStoredRole, getStoredUser } from "@/lib/api";
+import { useAuth, roleRouteMap } from "@/lib/auth-context";
 
 export default function LandingPage() {
   const router = useRouter();
   const [activePreviewTab, setActivePreviewTab] = useState<"commander" | "welfare" | "personnel">("welfare");
-  const [storedRole, setStoredRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    const role = getStoredRole();
-    if (role) setStoredRole(role);
-  }, []);
+  const { user } = useAuth();
 
   const getPortalRoute = () => {
-    switch (storedRole) {
-      case "COMMANDER":
-        return "/commander";
-      case "WELFARE_OFFICER":
-        return "/welfare";
-      case "PERSONNEL":
-        return "/personnel";
-      case "ADMIN":
-        return "/admin";
-      default:
-        return "/login";
-    }
+    return user ? roleRouteMap[user.role] : "/login";
   };
 
   return (
@@ -102,7 +86,7 @@ export default function LandingPage() {
               href={getPortalRoute()}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#2C5127] hover:bg-[#1E3A1A] active:bg-[#142612] text-white text-xs md:text-sm font-semibold tracking-wide shadow-sm shadow-[#2C5127]/20 border border-[#244320] transition-all"
             >
-              <span>{storedRole ? "Enter Your Portal" : "Access Secure Portal"}</span>
+              <span>{user ? "Enter Your Portal" : "Access Secure Portal"}</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -310,7 +294,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#2C5127]">
-                LIVE SYSTEM INTERFACES
+                ROLE WORKSPACE PREVIEWS
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#182417] mt-1">
                 Explore The Role Workspaces
@@ -395,7 +379,7 @@ export default function LandingPage() {
                       <span className="text-[11px] font-mono uppercase text-[#677766]">
                         Privacy Mode
                       </span>
-                      <div className="text-2xl font-bold font-serif text-[#15803D] mt-1">RLS Active</div>
+                      <div className="text-2xl font-bold font-serif text-[#15803D] mt-1">Scoped Access</div>
                       <span className="text-[11px] text-[#677766] font-mono">
                         Derived indicators only
                       </span>
@@ -617,7 +601,7 @@ export default function LandingPage() {
               </div>
               <div className="p-5 space-y-3 flex-1 flex flex-col justify-between text-xs">
                 <p className="text-[#3B4B3A]">
-                  User management with Argon2id credentials, master records, system health, and RLS policy controls. Not a welfare superuser.
+                  User management with Argon2id credentials, master records, system health, and scoped access controls. Not a welfare superuser.
                 </p>
                 <div className="pt-2 border-t border-[#E4ECE3] text-[11px] font-mono text-[#677766]">
                   Strict system governance only

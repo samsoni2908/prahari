@@ -51,16 +51,16 @@ export const Drawer: React.FC<DrawerProps> = ({
   }[size];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Backdrop */}
       <div
         onClick={onClose}
         className="fixed inset-0 bg-[#101D10]/50 backdrop-blur-sm transition-opacity duration-300 animate-in fade-in"
       />
 
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-0 md:pl-10">
+      <div className="fixed inset-y-0 right-0 flex w-full max-w-full justify-end pl-0 md:pl-10">
         <div
-          className={`w-screen ${sizeWidths} bg-white shadow-modal flex flex-col border-l border-[#CFDDCE] animate-in slide-in-from-right duration-300`}
+          className={`w-full min-w-0 ${sizeWidths} bg-white shadow-modal flex flex-col border-l border-[#CFDDCE] animate-in slide-in-from-right duration-300`}
         >
           {/* Header */}
           <div className="px-5 py-4 border-b border-[#CFDDCE] bg-[#FAF9F5] flex items-center justify-between shrink-0">
@@ -85,7 +85,7 @@ export const Drawer: React.FC<DrawerProps> = ({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 bg-white space-y-5">
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 bg-white space-y-5">
             {children}
           </div>
 
@@ -144,13 +144,13 @@ export const Modal: React.FC<ModalProps> = ({
   }[maxWidth];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div
         onClick={onClose}
         className="fixed inset-0 bg-[#101D10]/50 backdrop-blur-sm transition-opacity"
       />
       <div
-        className={`relative w-full ${widthClass} bg-white rounded-2xl border border-[#CFDDCE] shadow-modal overflow-hidden z-10 animate-in zoom-in-95 duration-200`}
+        className={`relative w-full ${widthClass} max-h-[calc(100dvh-1.5rem)] flex flex-col bg-white rounded-2xl border border-[#CFDDCE] shadow-modal overflow-hidden z-10 animate-in zoom-in-95 duration-200`}
       >
         <div className="px-6 py-4 border-b border-[#CFDDCE] bg-[#FAF9F5] flex items-center justify-between">
           <div>
@@ -165,7 +165,7 @@ export const Modal: React.FC<ModalProps> = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6">{children}</div>
         {footer && <div className="px-6 py-3.5 border-t border-[#CFDDCE] bg-[#FAF9F5] flex justify-end gap-2">{footer}</div>}
       </div>
     </div>

@@ -52,7 +52,9 @@
   --radius-xl: 16px;
 }
 
+html,
 body {
+  overflow-x: hidden;
   background-color: var(--background);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

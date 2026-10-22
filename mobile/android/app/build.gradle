@@ -38,32 +38,45 @@ android {
         unified {
             dimension "role"
             applicationId "org.prahari.app"
-            resValue "string", "app_name", "SWASTI"
+            resValue "string", "app_name", "PRAHARI"
             buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/login')}\""
         }
         personnel {
             dimension "role"
             applicationId "org.prahari.personnel"
-            resValue "string", "app_name", "SWASTI Personnel"
+            resValue "string", "app_name", "PRAHARI Personnel"
             buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/personnel')}\""
         }
         commander {
             dimension "role"
             applicationId "org.prahari.commander"
-            resValue "string", "app_name", "SWASTI Commander"
+            resValue "string", "app_name", "PRAHARI Commander"
             buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/commander')}\""
         }
         welfare {
             dimension "role"
             applicationId "org.prahari.welfare"
-            resValue "string", "app_name", "SWASTI Welfare"
+            resValue "string", "app_name", "PRAHARI Welfare"
             buildConfigField "String", "SERVER_URL", "\"${getCleanServerUrl('/welfare')}\""
+        }
+    }
+
+    signingConfigs {
+        release {
+            def signingPath = System.getenv('PRAHARI_KEYSTORE_PATH')
+            if (signingPath) {
+                storeFile file(signingPath)
+                storePassword System.getenv('PRAHARI_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('PRAHARI_KEY_ALIAS')
+                keyPassword System.getenv('PRAHARI_KEY_PASSWORD')
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {

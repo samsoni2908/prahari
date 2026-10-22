@@ -1,0 +1,225 @@
+table,column,description,dtype
+units,id,Primary key (UUID),str
+units,unit_code,units.unit_code - see database.md,str
+units,unit_name,units.unit_name - see database.md,str
+units,unit_type,units.unit_type - see database.md,str
+units,parent_unit_id,units.parent_unit_id - see database.md,str
+units,location_label,units.location_label - see database.md,str
+units,sanctioned_strength,units.sanctioned_strength - see database.md,int64
+units,is_active,units.is_active - see database.md,bool
+units,created_at,Record creation timestamp (UTC),str
+units,updated_at,Record last-updated timestamp (UTC),str
+personnel,id,Primary key (UUID),str
+personnel,personnel_code,personnel.personnel_code - see database.md,str
+personnel,pseudo_id,personnel.pseudo_id - see database.md,str
+personnel,unit_id,FK -> units.id,str
+personnel,rank_or_grade,personnel.rank_or_grade - see database.md,str
+personnel,role_title,personnel.role_title - see database.md,str
+personnel,status,personnel.status - see database.md,str
+personnel,joining_date,personnel.joining_date - see database.md,str
+personnel,service_years,personnel.service_years - see database.md,float64
+personnel,created_at,Record creation timestamp (UTC),str
+personnel,updated_at,Record last-updated timestamp (UTC),str
+users,id,Primary key (UUID),str
+users,username,users.username - see database.md,str
+users,password_hash,users.password_hash - see database.md,str
+users,role,users.role - see database.md,str
+users,personnel_id,FK -> personnel.id,str
+users,unit_id,FK -> units.id,str
+users,is_active,users.is_active - see database.md,bool
+users,created_at,Record creation timestamp (UTC),str
+users,updated_at,Record last-updated timestamp (UTC),str
+posting_history,id,Primary key (UUID),str
+posting_history,personnel_id,FK -> personnel.id,str
+posting_history,unit_id,FK -> units.id,str
+posting_history,posting_start_date,posting_history.posting_start_date - see database.md,str
+posting_history,posting_end_date,posting_history.posting_end_date - see database.md,str
+posting_history,posting_type,posting_history.posting_type - see database.md,str
+posting_history,location_label,posting_history.location_label - see database.md,str
+posting_history,created_at,Record creation timestamp (UTC),str
+skills,id,Primary key (UUID),str
+skills,skill_code,skills.skill_code - see database.md,str
+skills,skill_name,skills.skill_name - see database.md,str
+skills,category,skills.category - see database.md,str
+skills,is_active,skills.is_active - see database.md,bool
+person_skills,personnel_id,FK -> personnel.id,str
+person_skills,skill_id,person_skills.skill_id - see database.md,str
+person_skills,proficiency_level,person_skills.proficiency_level - see database.md,int64
+person_skills,valid_from,person_skills.valid_from - see database.md,str
+person_skills,valid_until,person_skills.valid_until - see database.md,str
+deployments,id,Primary key (UUID),str
+deployments,personnel_id,FK -> personnel.id,str
+deployments,unit_id,FK -> units.id,str
+deployments,deployment_type,deployments.deployment_type - see database.md,str
+deployments,location_label,deployments.location_label - see database.md,str
+deployments,start_date,deployments.start_date - see database.md,str
+deployments,end_date,deployments.end_date - see database.md,str
+deployments,intensity_level,deployments.intensity_level - see database.md,int64
+deployments,created_at,Record creation timestamp (UTC),str
+duties,id,Primary key (UUID),str
+duties,personnel_id,FK -> personnel.id,str
+duties,unit_id,FK -> units.id,str
+duties,duty_date,duties.duty_date - see database.md,str
+duties,start_at,duties.start_at - see database.md,str
+duties,end_at,duties.end_at - see database.md,str
+duties,duty_type,duties.duty_type - see database.md,str
+duties,shift_type,duties.shift_type - see database.md,str
+duties,is_night,duties.is_night - see database.md,bool
+duties,hours,duties.hours - see database.md,float64
+duties,deployment_id,duties.deployment_id - see database.md,str
+duties,created_at,Record creation timestamp (UTC),str
+rest_records,id,Primary key (UUID),str
+rest_records,personnel_id,FK -> personnel.id,str
+rest_records,record_date,rest_records.record_date - see database.md,str
+rest_records,rest_hours,rest_records.rest_hours - see database.md,object
+rest_records,rest_gap_hours,rest_records.rest_gap_hours - see database.md,float64
+rest_records,source,rest_records.source - see database.md,str
+rest_records,data_quality_status,rest_records.data_quality_status - see database.md,str
+rest_records,created_at,Record creation timestamp (UTC),str
+leave_records,id,Primary key (UUID),str
+leave_records,personnel_id,FK -> personnel.id,str
+leave_records,leave_type,leave_records.leave_type - see database.md,str
+leave_records,start_date,leave_records.start_date - see database.md,str
+leave_records,end_date,leave_records.end_date - see database.md,str
+leave_records,days,leave_records.days - see database.md,float64
+leave_records,status,leave_records.status - see database.md,str
+leave_records,created_at,Record creation timestamp (UTC),str
+training,id,Primary key (UUID),str
+training,personnel_id,FK -> personnel.id,str
+training,training_name,training.training_name - see database.md,str
+training,training_type,training.training_type - see database.md,str
+training,start_date,training.start_date - see database.md,str
+training,end_date,training.end_date - see database.md,str
+training,hours,training.hours - see database.md,float64
+training,status,training.status - see database.md,str
+training,created_at,Record creation timestamp (UTC),str
+staffing,id,Primary key (UUID),str
+staffing,unit_id,FK -> units.id,str
+staffing,record_date,staffing.record_date - see database.md,str
+staffing,sanctioned_strength,staffing.sanctioned_strength - see database.md,int64
+staffing,available_strength,staffing.available_strength - see database.md,int64
+staffing,required_strength,staffing.required_strength - see database.md,int64
+staffing,coverage_percent,staffing.coverage_percent - see database.md,float64
+staffing,created_at,Record creation timestamp (UTC),str
+wellbeing_consent,id,Primary key (UUID),str
+wellbeing_consent,personnel_id,FK -> personnel.id,str
+wellbeing_consent,consent_version,wellbeing_consent.consent_version - see database.md,str
+wellbeing_consent,purpose,wellbeing_consent.purpose - see database.md,str
+wellbeing_consent,status,wellbeing_consent.status - see database.md,str
+wellbeing_consent,consented_at,wellbeing_consent.consented_at - see database.md,str
+wellbeing_consent,withdrawn_at,wellbeing_consent.withdrawn_at - see database.md,str
+wellbeing_consent,created_at,Record creation timestamp (UTC),str
+wellbeing_private,id,Primary key (UUID),str
+wellbeing_private,personnel_id,FK -> personnel.id,str
+wellbeing_private,assessment_date,wellbeing_private.assessment_date - see database.md,str
+wellbeing_private,instrument_name,wellbeing_private.instrument_name - see database.md,str
+wellbeing_private,instrument_version,wellbeing_private.instrument_version - see database.md,str
+wellbeing_private,answers_json,wellbeing_private.answers_json - see database.md,str
+wellbeing_private,score_json,wellbeing_private.score_json - see database.md,str
+wellbeing_private,created_at,Record creation timestamp (UTC),str
+support_requests,id,Primary key (UUID),str
+support_requests,personnel_id,FK -> personnel.id,str
+support_requests,request_type,support_requests.request_type - see database.md,str
+support_requests,status,support_requests.status - see database.md,str
+support_requests,priority,support_requests.priority - see database.md,str
+support_requests,assigned_to_user_id,support_requests.assigned_to_user_id - see database.md,str
+support_requests,request_text,support_requests.request_text - see database.md,str
+support_requests,follow_up_date,support_requests.follow_up_date - see database.md,str
+support_requests,closed_at,support_requests.closed_at - see database.md,str
+support_requests,created_at,Record creation timestamp (UTC),str
+support_requests,updated_at,Record last-updated timestamp (UTC),str
+wsi_snapshots,id,Primary key (UUID),str
+wsi_snapshots,personnel_id,FK -> personnel.id,str
+wsi_snapshots,unit_id,FK -> units.id,str
+wsi_snapshots,snapshot_date,wsi_snapshots.snapshot_date - see database.md,str
+wsi_snapshots,wsi_score,wsi_snapshots.wsi_score - see database.md,float64
+wsi_snapshots,d_component,wsi_snapshots.d_component - see database.md,float64
+wsi_snapshots,r_component,wsi_snapshots.r_component - see database.md,float64
+wsi_snapshots,c_component,wsi_snapshots.c_component - see database.md,float64
+wsi_snapshots,n_component,wsi_snapshots.n_component - see database.md,float64
+wsi_snapshots,l_component,wsi_snapshots.l_component - see database.md,float64
+wsi_snapshots,h_component,wsi_snapshots.h_component - see database.md,float64
+wsi_snapshots,s_component,wsi_snapshots.s_component - see database.md,float64
+wsi_snapshots,policy_version,wsi_snapshots.policy_version - see database.md,str
+wsi_snapshots,created_at,Record creation timestamp (UTC),str
+baseline_metrics,id,Primary key (UUID),str
+baseline_metrics,personnel_id,FK -> personnel.id,str
+baseline_metrics,metric_date,baseline_metrics.metric_date - see database.md,str
+baseline_metrics,metric_name,baseline_metrics.metric_name - see database.md,str
+baseline_metrics,current_value,baseline_metrics.current_value - see database.md,float64
+baseline_metrics,median_value,baseline_metrics.median_value - see database.md,object
+baseline_metrics,mad_value,baseline_metrics.mad_value - see database.md,object
+baseline_metrics,z_score,baseline_metrics.z_score - see database.md,object
+baseline_metrics,ewma_value,baseline_metrics.ewma_value - see database.md,float64
+baseline_metrics,history_count,baseline_metrics.history_count - see database.md,int64
+baseline_metrics,baseline_status,baseline_metrics.baseline_status - see database.md,str
+baseline_metrics,created_at,Record creation timestamp (UTC),str
+anomaly_events,id,Primary key (UUID),str
+anomaly_events,personnel_id,FK -> personnel.id,str
+anomaly_events,unit_id,FK -> units.id,str
+anomaly_events,event_date,anomaly_events.event_date - see database.md,str
+anomaly_events,algorithm,anomaly_events.algorithm - see database.md,str
+anomaly_events,anomaly_score,anomaly_events.anomaly_score - see database.md,float64
+anomaly_events,is_anomaly,anomaly_events.is_anomaly - see database.md,bool
+anomaly_events,feature_set_version,anomaly_events.feature_set_version - see database.md,str
+anomaly_events,created_at,Record creation timestamp (UTC),str
+model_outputs,id,Primary key (UUID),str
+model_outputs,personnel_id,FK -> personnel.id,str
+model_outputs,prediction_date,model_outputs.prediction_date - see database.md,str
+model_outputs,target_name,model_outputs.target_name - see database.md,str
+model_outputs,prediction_probability,model_outputs.prediction_probability - see database.md,float64
+model_outputs,predicted_class,model_outputs.predicted_class - see database.md,int64
+model_outputs,model_name,model_outputs.model_name - see database.md,str
+model_outputs,model_version,model_outputs.model_version - see database.md,str
+model_outputs,feature_set_version,model_outputs.feature_set_version - see database.md,str
+model_outputs,training_data_version,model_outputs.training_data_version - see database.md,str
+model_outputs,evaluation_metrics_json,model_outputs.evaluation_metrics_json - see database.md,str
+model_outputs,explanation_json,model_outputs.explanation_json - see database.md,str
+model_outputs,created_at,Record creation timestamp (UTC),str
+alerts,id,Primary key (UUID),str
+alerts,personnel_id,FK -> personnel.id,str
+alerts,unit_id,FK -> units.id,str
+alerts,alert_type,alerts.alert_type - see database.md,str
+alerts,severity,alerts.severity - see database.md,str
+alerts,source_type,alerts.source_type - see database.md,str
+alerts,source_id,alerts.source_id - see database.md,str
+alerts,status,alerts.status - see database.md,str
+alerts,dedupe_key,alerts.dedupe_key - see database.md,str
+alerts,message,alerts.message - see database.md,str
+alerts,created_at,Record creation timestamp (UTC),str
+alerts,resolved_at,alerts.resolved_at - see database.md,str
+roster_scenarios,id,Primary key (UUID),str
+roster_scenarios,unit_id,FK -> units.id,str
+roster_scenarios,created_by_user_id,roster_scenarios.created_by_user_id - see database.md,str
+roster_scenarios,scenario_name,roster_scenarios.scenario_name - see database.md,str
+roster_scenarios,status,roster_scenarios.status - see database.md,str
+roster_scenarios,current_snapshot_json,roster_scenarios.current_snapshot_json - see database.md,str
+roster_scenarios,proposed_snapshot_json,roster_scenarios.proposed_snapshot_json - see database.md,str
+roster_scenarios,before_metrics_json,roster_scenarios.before_metrics_json - see database.md,str
+roster_scenarios,after_metrics_json,roster_scenarios.after_metrics_json - see database.md,str
+roster_scenarios,constraint_results_json,roster_scenarios.constraint_results_json - see database.md,str
+roster_scenarios,optimizer_method,roster_scenarios.optimizer_method - see database.md,str
+roster_scenarios,created_at,Record creation timestamp (UTC),str
+scenario_changes,id,Primary key (UUID),str
+scenario_changes,scenario_id,scenario_changes.scenario_id - see database.md,str
+scenario_changes,personnel_id,FK -> personnel.id,str
+scenario_changes,change_type,scenario_changes.change_type - see database.md,str
+scenario_changes,from_value,scenario_changes.from_value - see database.md,str
+scenario_changes,to_value,scenario_changes.to_value - see database.md,str
+scenario_changes,reason,scenario_changes.reason - see database.md,str
+scenario_changes,created_at,Record creation timestamp (UTC),str
+approvals,id,Primary key (UUID),str
+approvals,scenario_id,approvals.scenario_id - see database.md,str
+approvals,actor_user_id,approvals.actor_user_id - see database.md,str
+approvals,decision,approvals.decision - see database.md,str
+approvals,reason,approvals.reason - see database.md,str
+approvals,decided_at,approvals.decided_at - see database.md,str
+outcomes,id,Primary key (UUID),str
+outcomes,scenario_id,outcomes.scenario_id - see database.md,str
+outcomes,recorded_by_user_id,outcomes.recorded_by_user_id - see database.md,str
+outcomes,observation_date,outcomes.observation_date - see database.md,str
+outcomes,observed_metrics_json,outcomes.observed_metrics_json - see database.md,str
+outcomes,wsi_change,outcomes.wsi_change - see database.md,float64
+outcomes,operational_event_observed,outcomes.operational_event_observed - see database.md,bool
+outcomes,notes,outcomes.notes - see database.md,str
+outcomes,created_at,Record creation timestamp (UTC),str

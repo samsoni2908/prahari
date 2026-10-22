@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Settings,
   Shield,
@@ -43,6 +44,7 @@ import { LoadingState, EmptyState } from "@/components/common/States";
 import { Drawer } from "@/components/common/Drawer";
 
 export default function AdminPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "users" | "personnel" | "units" | "skills" | "data" | "system"
   >("dashboard");
@@ -59,18 +61,21 @@ export default function AdminPage() {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [failedSections, setFailedSections] = useState<string[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Operational Run State
-  const [runCutoff, setRunCutoff] = useState("2026-08-30");
+  const [runCutoff, setRunCutoff] = useState(() => new Date().toISOString().slice(0, 10));
   const [runUnitId, setRunUnitId] = useState("");
   const [runSubmitting, setRunSubmitting] = useState(false);
   const [runResult, setRunResult] = useState<any | null>(null);
 
   // Create User form
   const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("prahari123");
-  const [newRole, setNewRole] = useState("PERSONNEL");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("ADMIN");
+  const [newUserUnitId, setNewUserUnitId] = useState("");
+  const [newUserPersId, setNewUserPersId] = useState("");
   const [userCreating, setUserCreating] = useState(false);
 
   // Create Personnel form
@@ -86,7 +91,7 @@ export default function AdminPage() {
   // Transfer Personnel form
   const [transferPersId, setTransferPersId] = useState("");
   const [transferTargetUnitId, setTransferTargetUnitId] = useState("");
-  const [transferReason, setTransferReason] = useState("ROUTINE_ROTATION");
+  const [transferReason, setTransferReason] = useState("UNIT_TRANSFER");
   const [transferSubmitting, setTransferSubmitting] = useState(false);
 
   // Create Unit form
@@ -115,38 +120,39 @@ export default function AdminPage() {
   const [commitResult, setCommitResult] = useState<any | null>(null);
 
   useEffect(() => {
-    loadData();
+    const tab = searchParams.get("tab");
+    if (tab === "users") setActiveTab("users");
+    else if (tab === "personnel") setActiveTab("personnel");
+    else if (tab === "units") setActiveTab("units");
+    else if (tab === "skills") setActiveTab("skills");
+    else if (tab === "data" || tab === "data_management" || tab === "imports") setActiveTab("data");
+    else if (tab === "system" || tab === "settings") setActiveTab("system");
+    else setActiveTab("dashboard");
+  }, [searchParams]);
 
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      if (tab === "users") setActiveTab("users");
-      else if (tab === "personnel") setActiveTab("personnel");
-      else if (tab === "units") setActiveTab("units");
-      else if (tab === "skills") setActiveTab("skills");
-      else if (tab === "data" || tab === "imports") setActiveTab("data");
-      else if (tab === "system" || tab === "settings") setActiveTab("system");
-      else if (tab === "dashboard") setActiveTab("dashboard");
-    }
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const failed: string[] = [];
+    const load = async <T,>(name: string, promise: Promise<T>, fallback: T): Promise<T> => {
+      try { return await promise; }
+      catch { failed.push(name); return fallback; }
+    };
     try {
       const [h, m, j, u, p, un, sk, pol, aud, tpls, imps] = await Promise.all([
-        adminApi.getHealth().catch(() => null),
-        adminApi.getModels().catch(() => null),
-        adminApi.getJobs().catch(() => null),
-        adminApi.listUsers().catch(() => []),
-        adminApi.listPersonnel().catch(() => []),
-        adminApi.listUnits().catch(() => []),
-        adminApi.listSkills().catch(() => ({ items: [] })),
-        adminApi.listPolicies().catch(() => []),
-        adminApi.getAudit().catch(() => []),
-        adminApi.getImportTemplates().catch(() => null),
-        adminApi.getImportHistory().catch(() => ({ items: [] })),
+        load("health", adminApi.getHealth(), null),
+        load("models", adminApi.getModels(), null),
+        load("jobs", adminApi.getJobs(), null),
+        load("users", adminApi.listUsers(), []),
+        load("personnel", adminApi.listPersonnel(), []),
+        load("units", adminApi.listUnits(), []),
+        load("skills", adminApi.listSkills(), { items: [], next_offset: null }),
+        load("policies", adminApi.listPolicies(), []),
+        load("audit", adminApi.getAudit(), []),
+        load("import templates", adminApi.getImportTemplates(), null),
+        load("import history", adminApi.getImportHistory(), { items: [], next_offset: null }),
       ]);
+      setFailedSections(failed);
       setHealth(h);
       setModels(m);
       setJobs(j);
@@ -160,18 +166,24 @@ export default function AdminPage() {
       setImportHistory(imps?.items || []);
 
       if (un && un.length > 0) {
-        if (!newPersUnitId) setNewPersUnitId(un[0].id);
-        if (!transferTargetUnitId) setTransferTargetUnitId(un[0].id);
+        setNewPersUnitId((current) => current || un[0].id);
+        setTransferTargetUnitId((current) => current || un[un.length > 1 ? 1 : 0].id);
+        setNewUserUnitId((current) => current || un[0].id);
       }
-      if (p && p.length > 0 && !transferPersId) {
-        setTransferPersId(p[0].id);
+      if (p && p.length > 0) {
+        setTransferPersId((current) => current || p[0].id);
+        setNewUserPersId((current) => current || p[0].id);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load admin data");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   // Handle Trigger Operational Run
   async function handleTriggerRun(e: React.FormEvent) {
@@ -202,11 +214,21 @@ export default function AdminPage() {
     setUserCreating(true);
     setError(null);
     try {
-      await adminApi.createUser({
+      const payload: any = {
         username: newUsername,
         password: newPassword,
         role: newRole,
-      });
+      };
+      if (newRole === "COMMANDER" || newRole === "WELFARE_OFFICER") {
+        if (newUserUnitId || units[0]?.id) {
+          payload.unit_id = newUserUnitId || units[0]?.id;
+        }
+      } else if (newRole === "PERSONNEL") {
+        if (newUserPersId || personnel[0]?.id) {
+          payload.personnel_id = newUserPersId || personnel[0]?.id;
+        }
+      }
+      await adminApi.createUser(payload);
       setSuccessMsg(`User '${newUsername}' successfully created with Argon2id hash!`);
       setNewUsername("");
       const refreshed = await adminApi.listUsers();
@@ -236,7 +258,7 @@ export default function AdminPage() {
     setPersCreating(true);
     setError(null);
     try {
-      const pseudo = newPersPseudo || `PRH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const pseudo = newPersPseudo.trim() || `PERS-${newPersCode.trim()}`;
       await adminApi.createPersonnel({
         personnel_code: newPersCode,
         pseudo_id: pseudo,
@@ -246,7 +268,7 @@ export default function AdminPage() {
         unit_id: newPersUnitId,
         service_years: Number(newPersServiceYears),
       });
-      setSuccessMsg(`Personnel record '${newPersFullName}' (${pseudo}) created successfully.`);
+      setSuccessMsg(`Personnel record '${newPersFullName}' created successfully.`);
       setNewPersCode("");
       setNewPersPseudo("");
       setNewPersFullName("");
@@ -402,7 +424,7 @@ export default function AdminPage() {
             </span>
           </div>
           <p className="text-xs text-[#677766] mt-1">
-            4-Role RBAC • Master Ingestion • Pipeline Trigger • RLS Enforcement • Immutable Audit Ledger
+            4-Role RBAC • Master Ingestion • Pipeline Trigger • Scoped Authorization • Immutable Audit Ledger
           </p>
         </div>
 
@@ -417,9 +439,9 @@ export default function AdminPage() {
             Refresh Telemetry
           </Button>
 
-          <span className="px-3 py-1.5 rounded-full bg-[#ECFDF5] text-[#15803D] text-xs font-semibold border border-[#A7F3D0] flex items-center gap-1.5">
+          <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${health?.database_status === "HEALTHY" ? "bg-[#ECFDF5] text-[#15803D] border-[#A7F3D0]" : "bg-[#F3F4F6] text-[#4B5563] border-[#E5E7EB]"}`}>
             <CheckCircle className="h-4 w-4" />
-            <span>DB: {health?.database_status || "CONNECTED"}</span>
+            <span>DB: {health?.database_status || "UNAVAILABLE"}</span>
           </span>
         </div>
       </div>
@@ -433,6 +455,11 @@ export default function AdminPage() {
           <button onClick={() => setError(null)} className="p-1 hover:bg-[#FECACA] rounded">
             <X className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+      {failedSections.length > 0 && (
+        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          Admin data unavailable: {failedSections.join(", ")}. Empty sections may reflect an API failure.
         </div>
       )}
 
@@ -485,31 +512,31 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="FastAPI Service"
-              value="ACTIVE (:8000)"
-              subtitle="prahari_backend container"
+              value={health ? "RESPONDING" : "UNAVAILABLE"}
+              subtitle="Authenticated backend health API"
               icon={<Server className="h-4 w-4 text-[#15803D]" />}
-              status="normal"
+              status={health ? "normal" : "neutral"}
             />
             <StatCard
               title="PostgreSQL 16 DB"
-              value="CONNECTED (:5432)"
-              subtitle="Row-Level Security Active"
+              value={health?.database_status || "UNAVAILABLE"}
+              subtitle="Server-Side Scope Enforcement"
               icon={<Database className="h-4 w-4 text-[#2C5127]" />}
-              status="normal"
+              status={health?.database_status === "HEALTHY" ? "normal" : "neutral"}
             />
             <StatCard
               title="Scheduler Cadence"
-              value={jobs?.scheduler_status || "RUNNING"}
-              subtitle={jobs?.scheduler_cadence || "00:15 UTC daily"}
+              value={jobs?.scheduler_status || "UNAVAILABLE"}
+              subtitle={jobs?.scheduler_cadence || "Cadence unavailable"}
               icon={<Clock className="h-4 w-4 text-[#5B2C78]" />}
-              status="normal"
+              status={jobs?.scheduler_status === "RUNNING" ? "normal" : "neutral"}
             />
             <StatCard
               title="Registered Accounts"
-              value={`${users.length} Users`}
+              value={failedSections.includes("users") ? "UNAVAILABLE" : `${users.length} Users`}
               subtitle="Argon2id Hashed Passwords"
               icon={<Users className="h-4 w-4 text-[#B8860B]" />}
-              status="normal"
+              status={failedSections.includes("users") ? "neutral" : "normal"}
             />
           </div>
 
@@ -535,9 +562,9 @@ export default function AdminPage() {
                   </span>
                 </div>
                 <div className="text-[11px] text-[#677766] space-y-1">
-                  <div>Features: <strong>{models?.model_a?.feature_count || 15}</strong></div>
-                  <div>Threshold: <strong>{models?.model_a?.threshold || "0.15"}</strong></div>
-                  <div>Policy: <strong>{models?.model_a?.threshold_policy || "PROVISIONAL_V1"}</strong></div>
+                  <div>Features: <strong>{models?.model_a?.feature_count ?? "—"}</strong></div>
+                  <div>Threshold: <strong>{models?.model_a?.threshold ?? "—"}</strong></div>
+                  <div>Policy: <strong>{models?.model_a?.threshold_policy ?? "—"}</strong></div>
                   <div className="text-[10px] text-[#B45309] pt-1">
                     Synthetic prototype demonstration only. Not clinical or real military validity.
                   </div>
@@ -549,11 +576,11 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[#182417]">Engine B (Private Wellbeing)</span>
                   <span className="px-2 py-0.5 rounded bg-[#F3E8FF] text-[#5B2C78] font-bold text-[10px]">
-                    {models?.engine_b?.status || "INSTRUMENT_NOT_ACTIVATED"}
+                    {models?.engine_b?.status ?? "—"}
                   </span>
                 </div>
                 <div className="text-[11px] text-[#677766] space-y-1">
-                  <div>Training Status: <strong>{models?.engine_b?.training_status || "NOT_TRAINED"}</strong></div>
+                  <div>Training Status: <strong>{models?.engine_b?.training_status ?? "—"}</strong></div>
                   <div>Consent Boundary: <strong>STRICT ISOLATION</strong></div>
                   <div className="text-[10px] text-[#5B2C78] pt-1">
                     Gated by PRAHARI Ethical Charter. No synthetic psychometric labels fabricated.
@@ -566,12 +593,12 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[#182417]">Model C (Convergence Protocol)</span>
                   <span className="px-2 py-0.5 rounded bg-[#ECFDF5] text-[#15803D] font-bold text-[10px]">
-                    ACTIVE
+                    {models?.model_c ? "ACTIVE" : "—"}
                   </span>
                 </div>
                 <div className="text-[11px] text-[#677766] space-y-1">
-                  <div>Rules Version: <strong>{models?.model_c?.rules_version || "v1.1-truthful"}</strong></div>
-                  <div>Type: <strong>{models?.model_c?.type || "DETERMINISTIC"}</strong></div>
+                  <div>Rules Version: <strong>{models?.model_c?.rules_version ?? "—"}</strong></div>
+                  <div>Type: <strong>{models?.model_c?.type ?? "—"}</strong></div>
                   <div className="text-[10px] text-[#15803D] pt-1">
                     Evidence convergence logic enforces operational transparency.
                   </div>
@@ -688,7 +715,7 @@ export default function AdminPage() {
               <span>Provision User Account (Strict 4 Roles: PERSONNEL, COMMANDER, WELFARE_OFFICER, ADMIN)</span>
             </h3>
 
-            <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-mono">
+            <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs font-mono">
               <div>
                 <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
                   USERNAME
@@ -726,12 +753,61 @@ export default function AdminPage() {
                   onChange={(e) => setNewRole(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
                 >
-                  <option value="PERSONNEL">PERSONNEL</option>
+                  <option value="ADMIN">ADMIN</option>
                   <option value="COMMANDER">COMMANDER</option>
                   <option value="WELFARE_OFFICER">WELFARE_OFFICER</option>
-                  <option value="ADMIN">ADMIN</option>
+                  <option value="PERSONNEL">PERSONNEL</option>
                 </select>
               </div>
+
+              {(newRole === "COMMANDER" || newRole === "WELFARE_OFFICER") && (
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                    ASSIGNED UNIT
+                  </label>
+                  <select
+                    value={newUserUnitId}
+                    onChange={(e) => setNewUserUnitId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                  >
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.unit_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {newRole === "PERSONNEL" && (
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                    BOUND PERSONNEL
+                  </label>
+                  <select
+                    value={newUserPersId}
+                    onChange={(e) => setNewUserPersId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
+                  >
+                    {personnel.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.pseudo_id} ({p.rank_or_grade})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {newRole === "ADMIN" && (
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#3B4B3A] mb-1 font-semibold">
+                    SCOPE BINDING
+                  </label>
+                  <div className="w-full px-3 py-2 bg-[#FAF9F5] border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#677766] truncate">
+                    Global Console
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-end">
                 <Button
@@ -947,6 +1023,7 @@ export default function AdminPage() {
                   onChange={(e) => setTransferReason(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
                 >
+                  <option value="UNIT_TRANSFER">UNIT_TRANSFER</option>
                   <option value="ROUTINE_ROTATION">ROUTINE_ROTATION</option>
                   <option value="OPERATIONAL_NEED">OPERATIONAL_NEED</option>
                   <option value="COMPASSIONATE_GROUNDS">COMPASSIONATE_GROUNDS</option>
@@ -1381,7 +1458,7 @@ export default function AdminPage() {
       {/* ─── Tab 7: Security & Audit Ledger ──────────────────────────── */}
       {activeTab === "system" && (
         <div className="space-y-6">
-          {/* Security & RLS Policies */}
+          {/* Security and scoped-access policies */}
           <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
             <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
               <Lock className="h-4 w-4 text-[#15803D]" />

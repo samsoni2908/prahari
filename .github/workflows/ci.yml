@@ -1,4 +1,4 @@
-name: SWASTI CI Pipeline
+name: PRAHARI CI
 
 on:
   push:
@@ -7,32 +7,78 @@ on:
     branches: [main]
 
 jobs:
-  backend-lint:
-    name: Backend Code Integrity
+  backend-tests:
+    name: Backend Full PostgreSQL Verification
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: prahari-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ENVIRONMENT: test
+      DEBUG: "false"
+      SECRET_KEY: prahari-ci-test-secret-not-for-deployment-26186
+      ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgresql+asyncpg://postgres:prahari-ci-only@127.0.0.1:5432/prahari_test_isolated
+      DATABASE_URL_SYNC: postgresql://postgres:prahari-ci-only@127.0.0.1:5432/prahari_test_isolated
+      PRAHARI_TEST_DATABASE_URL: postgresql+asyncpg://postgres:prahari-ci-only@127.0.0.1:5432/prahari_test_isolated
+      PRAHARI_TEST_ADMIN_URL: postgresql://postgres:prahari-ci-only@127.0.0.1:5432/postgres
+      PRAHARI_ALLOW_TEST_DB_RESET: "1"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: "pip"
 
       - name: Install dependencies
         run: |
           cd backend
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -c requirements.lock
 
       - name: Verify Python Code Compilation
         run: |
           cd backend
-          python -m compileall app
+          python -m compileall app tools tests
+
+      - name: Validate synthetic seed inventory
+        run: |
+          cd backend
+          python -m tools.data_generation.seed_manifest
+
+      - name: Prepare isolated PostgreSQL databases
+        run: |
+          cd backend
+          python -m tools.data_generation.prepare_test_databases
+
+      - name: Verify authoritative migration head
+        run: |
+          cd backend
+          test "$(alembic heads | awk '{print $1}')" = "f26186_stage4_planning_sources"
+
+      - name: Run complete backend suite
+        run: |
+          cd backend
+          python -m pytest -q
 
   frontend-build:
     name: Frontend Build & Typecheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -51,12 +97,15 @@ jobs:
       - name: TypeScript Typecheck & Build
         run: |
           cd frontend
+          npm run lint
+          npm run typecheck
           npm run build
 
   gitleaks:
     name: Secret Leak Detection
     runs-on: ubuntu-latest
-    continue-on-error: true
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:

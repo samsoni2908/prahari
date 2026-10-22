@@ -4,24 +4,18 @@ import type { NextRequest } from "next/server";
 const PROTECTED_PREFIXES = ["/personnel", "/commander", "/welfare", "/admin", "/dashboard"];
 
 export function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get("prahari_session");
+  // Non-secret UX session presence indicator (Backend RBAC remains authoritative for all data APIs)
+  const isLoggedIn = request.cookies.get("prahari_logged_in")?.value === "1";
   const { pathname } = request.nextUrl;
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  // Protected routes require valid session cookie
+  // Protected routes require valid session presence
   if (isProtected) {
-    if (!sessionCookie || !sessionCookie.value) {
+    if (!isLoggedIn) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  // If authenticated and visiting login page, redirect to root which routes to role dashboard
-  if (pathname === "/login") {
-    if (sessionCookie && sessionCookie.value) {
-      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 

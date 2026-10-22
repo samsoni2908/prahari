@@ -1,108 +1,81 @@
-# SWASTI — AI-Powered Personnel Stress & Welfare Monitoring System
+# PRAHARI — SIH 26186
 
-> **Smart India Hackathon 2024 · Problem Statement SIH 26186**  
-> *Advanced Welfare Decision-Support & Fatigue Monitoring Platform for Defence & Armed Forces Personnel*
+PRAHARI is a privacy-preserving operational workload and recovery decision-support prototype for uniformed services. It implements the human-controlled workflow:
 
----
+`DETECT → EXPLAIN → BALANCE → DECISION → IMPLEMENTATION → VERIFY`
 
-## 1. System Overview
+The application has exactly four roles: `PERSONNEL`, `WELFARE_OFFICER`, `COMMANDER`, and `ADMIN`. Private voluntary wellbeing data is kept separate from command analytics. PRAHARI does not diagnose mental-health conditions or automate consequential personnel decisions.
 
-**SWASTI** is an AI-powered welfare decision-support system designed to monitor operational stressors and voluntary well-being indicators for armed forces personnel. It provides early-warning risk detection to welfare officers and aggregate organizational readiness insights to unit commanders while strictly preserving individual privacy through cryptographic and architectural isolation.
+## Repository layout
 
-### Exactly Four Roles (Role-Based Access Control)
+| Path | Purpose |
+|---|---|
+| `backend/` | FastAPI application, SQLAlchemy models, Alembic migrations, analytics and tests |
+| `frontend/` | Next.js responsive web/PWA application |
+| `mobile/` | Unified Android WebView wrapper for the deployed HTTPS application |
+| `data/seed26186/` | Synthetic, non-operational demo and model-governance fixtures |
+| `database/` | Reviewable schema/reference SQL; Alembic remains the migration authority |
+| `docs/` | Canonical product, architecture, database, ML, design and task contracts |
+| `.github/workflows/` | CI, secret scanning and secure Android release build |
 
-| Role | Access Scope | Operational Responsibilities |
-|---|---|---|
-| **Personnel** | Own Records Only | Personal profile, duties, deployments, leave balance, voluntary confidential well-being check-in, personal risk trend, and welfare support requests. |
-| **Commander** | Unit-Level Aggregates Only | Battalion overview, personnel availability, leave & workload distributions, aggregate risk trends, and operational reporting. **Zero access to private individual well-being answers.** |
-| **Welfare Officer** | Authorized Personnel Cases | Search authorized personnel, individual 8-tab welfare dossier (service, deployments, duties, leave, rest, training, well-being, risk factors), and welfare action logging. |
-| **Admin** | System Master Data | User management, personnel records, unit configuration, audit trail inspection, and data synchronization. **Zero involvement in welfare intervention decisions.** |
+`delete/`, local environment files, signing keys, APKs and generated build output are intentionally excluded from version control.
 
----
+## Prerequisites
 
-## 2. Evaluation Credentials
+- Docker Desktop with Docker Compose
+- Node.js 20 for native frontend development
+- Python 3.14 for native backend development
 
-The system provides demonstration accounts for evaluation across all four roles:
+## Run locally with Docker
 
-| Role | Username | Default Password | Primary Dashboard Route |
-|---|---|---|---|
-| **Personnel** | `personnel` | `prahari123` | `/personnel` |
-| **Commander** | `commander` | `prahari123` | `/commander` |
-| **Welfare Officer** | `welfare` | `prahari123` | `/welfare` |
-| **Administrator** | `admin` | `prahari123` | `/admin` |
+1. Copy `.env.example` to `.env`.
+2. Replace all development passwords and `SECRET_KEY`; never commit `.env`.
+3. Start the stack:
 
-*Unified Login*: All users authenticate through the single common login page at `/login`. The system inspects credentials, issues an HttpOnly session cookie, and routes users to their authorized operational console.
-
----
-
-## 3. Architecture & Privacy Safeguards
-
-```
-[ Browser / Unified Mobile APK ]
-              │
-              ▼
-[ Next.js 14 Frontend (:3000) ]
-   └── Next.js Rewrites Proxy (/api/* ──► Backend Internal URL)
-              │
-              ▼
-[ FastAPI Backend Gateway (:8000) ]
-   ├── Authentication & RBAC (Argon2id + PyJWT + HttpOnly Cookie)
-   ├── SlowAPI Rate Limiter (--proxy-headers --forwarded-allow-ips=*)
-   ├── Dual-Track ML Inference Engine (Track A: HR, Track B: Wellbeing)
-   └── APScheduler (Nightly batch inference with daily idempotency guard)
-              │
-              ▼
-[ PostgreSQL 16 Database (:5432) ]
-   ├── Operational & HR Tables (Units, Personnel, Duties, Deployments, Leaves)
-   ├── Derived Risk Scores & Alerts (ModelOutput, Alert, Outcome)
-   └── Quarantined Vault (wellbeing_private — strictly isolated from Commander & Welfare)
-```
-
-### Privacy Firewall
-- **Raw Survey Quarantine**: Responses to voluntary assessments (`wellbeing_private`) remain exclusively accessible to the individual soldier.
-- **Welfare Officer Access**: Receives only derived risk categories, trend trajectories, and objective contributing factors.
-- **Commander Access**: Receives unit-level aggregates with an aggregation floor ($N \ge 5$) to prevent re-identification.
-- **No Automatic High-Stakes Decisions**: Risk indicators inform human welfare review; the platform never automatically denies leave, alters duty rosters, or initiates administrative actions.
-
----
-
-## 4. Quick Start (Docker Compose)
-
-The entire full-stack system can be brought up locally in one command:
-
-### Prerequisites
-- Docker Engine 24+ & Docker Compose v2+
-- Ports `3000`, `8000`, and `5432` available
-
-### Running the System
 ```bash
-# 1. Clone repository
-git clone https://github.com/samsoni2908/Prahari.git
-cd Prahari
-
-# 2. Configure environment
-cp .env.example .env
-
-# 3. Boot full-stack services
-docker compose up --build -d
+docker compose up --build
 ```
 
-### Accessing Services
-- **Web Application**: [http://localhost:3000](http://localhost:3000)
-- **Backend API & Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Liveness Health Probe**: [http://localhost:8000/health](http://localhost:8000/health)
+The backend applies the authoritative Alembic migration chain before starting. Open the frontend at `http://localhost:3000`; backend health is available at `http://localhost:8000/health`.
 
----
+To stop the services without deleting database data:
 
-## 5. Cloud Deployment Ready
+```bash
+docker compose stop
+```
 
-SWASTI is pre-configured for production container deployment:
-- **`railway.toml`**: Configured with automated migrations (`alembic upgrade head`), production Uvicorn worker, proxy headers, and `/health` probe.
-- **Next.js Reverse Proxy**: Uses `rewrites()` in `next.config.mjs` to proxy `/api/*` to the private backend, allowing `SameSite=lax` HttpOnly cookies to operate seamlessly across microservices.
-- **Dual-Track ML Engine**: Pre-calibrated risk models enable real-time risk classification and objective contributing factor breakdown.
+## Development checks
 
----
+Backend dependencies are reproducibly constrained by both manifests:
 
-## 6. License & Compliance
+```bash
+python -m pip install -r backend/requirements.txt -c backend/requirements.lock
+cd backend
+python -m pytest -q
+```
 
-Developed for the Smart India Hackathon (SIH 26186). Designed in alignment with Armed Forces welfare monitoring standards and data protection principles.
+Database-backed tests require an isolated PostgreSQL 16 database and must never target retained development or production data.
+
+Frontend checks:
+
+```bash
+cd frontend
+npm ci
+npm run lint
+npm run typecheck
+npm run build
+```
+
+## Database authority
+
+`backend/alembic.ini` and `backend/alembic/canonical/` are the single migration authority for local PostgreSQL and hosted PostgreSQL deployments. Files under `backend/alembic/history/` and `database/` are retained references, not a second active migration chain.
+
+## Android release
+
+The unified Android wrapper contains no separate business logic and must use an HTTPS deployment URL. Signed releases are built by `.github/workflows/build-apks.yml` with repository secrets; keystores and credentials must never be committed. Local debug builds use `mobile/build-apks.ps1`.
+
+## Canonical documentation
+
+Read [AGENTS.md](AGENTS.md) first, followed by [rules](docs/rules.md), [product requirements](docs/prd.md), [architecture](docs/architecture.md), [database](docs/database.md), [analytics/ML](docs/ml.md), [design](docs/design.md), and the current [task status](docs/task.md).
+
+All included datasets are synthetic and support software demonstration only. They do not establish real-world predictive or clinical validity.

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   HeartHandshake,
   Search,
@@ -42,6 +43,7 @@ import { Drawer } from "@/components/common/Drawer";
 import { LoadingState, EmptyState } from "@/components/common/States";
 
 export default function WelfarePage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"search" | "cases">("search");
   const [searchMode, setSearchMode] = useState<"roster" | "audited">("roster");
 
@@ -78,13 +80,17 @@ export default function WelfarePage() {
   const [selectedCaseDetail, setSelectedCaseDetail] = useState<any | null>(null);
   const [caseDetailLoading, setCaseDetailLoading] = useState(false);
   const [caseActionNote, setCaseActionNote] = useState("");
-  const [caseActionType, setCaseActionType] = useState<string>("WELFARE_FOLLOWUP");
+  const [caseActionType, setCaseActionType] = useState<string>("WORKLOAD_REVIEW");
   const [caseActionFollowUp, setCaseActionFollowUp] = useState("");
   const [caseActionStatus, setCaseActionStatus] = useState("ASSIGNED");
   const [caseActionSubmitting, setCaseActionSubmitting] = useState(false);
   const [caseActionSuccess, setCaseActionSuccess] = useState<string | null>(null);
   const [casePriorityReason, setCasePriorityReason] = useState("");
   const [casePrioritySubmitting, setCasePrioritySubmitting] = useState(false);
+  const searchQueryRef = useRef(searchQuery);
+  const riskFilterRef = useRef(riskFilter);
+  searchQueryRef.current = searchQuery;
+  riskFilterRef.current = riskFilter;
 
   // Selected Profile for 7-tab dossier drawer
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<string | null>(null);
@@ -106,34 +112,29 @@ export default function WelfarePage() {
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    handleSearch();
-    loadCases();
-
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      if (tab === "cases") setActiveTab("cases");
-      else if (tab === "search" || tab === "personnel") setActiveTab("search");
-
-      const pid = params.get("personnel_id");
-      if (pid) {
-        openProfile(pid);
-      }
+    const tab = searchParams.get("tab");
+    if (tab === "cases" || tab === "alerts" || tab === "actions" || tab === "reports") {
+      setActiveTab("cases");
+    } else {
+      setActiveTab("search");
     }
-  }, [riskFilter]);
 
-  async function handleSearch() {
+    const pid = searchParams.get("personnel_id");
+    if (pid) openProfile(pid);
+  }, [searchParams]);
+
+  const handleSearch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await welfareApi.searchPersonnel(searchQuery, riskFilter);
+      const data = await welfareApi.searchPersonnel(searchQueryRef.current, riskFilterRef.current);
       setPersonnelList(data || []);
     } catch (err: any) {
       setError(err.message || "Failed to search personnel");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   async function handleNamedSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -163,19 +164,26 @@ export default function WelfarePage() {
     }
   }
 
-  async function loadCases() {
+  const loadCases = useCallback(async () => {
     try {
       const cases = await welfareApi.listCases();
       setCasesList(cases || []);
-    } catch {
-      // Keep existing silent fallback
+    } catch (err: any) {
+      setError(err.message || "Welfare cases are unavailable");
     }
-  }
+  }, []);
 
-  async function openCaseDrawer(caseId: string) {
+  useEffect(() => {
+    void handleSearch();
+    void loadCases();
+  }, [riskFilter, handleSearch, loadCases]);
+
+  async function openCaseDrawer(caseId: string, preserveSuccessMsg = false) {
     setSelectedCaseId(caseId);
     setCaseDetailLoading(true);
-    setCaseActionSuccess(null);
+    if (!preserveSuccessMsg) {
+      setCaseActionSuccess(null);
+    }
     try {
       const detail = await welfareApi.getCaseDetail(caseId);
       setSelectedCaseDetail(detail);
@@ -213,7 +221,7 @@ export default function WelfarePage() {
     setCaseSuccessMsg(null);
     try {
       const res = await welfareApi.openCase({
-        personnel_id: caseTargetPersonnel.id,
+        personnel_id: caseTargetPersonnel.id || caseTargetPersonnel.personnel_id,
         request_type: caseRequestType,
         priority: casePriority,
         personnel_visible_reason: caseReason.trim(),
@@ -242,7 +250,7 @@ export default function WelfarePage() {
         "Welfare Officer self-assigned case for dedicated support"
       );
       setCaseActionSuccess("Case assigned to you successfully.");
-      openCaseDrawer(selectedCaseId);
+      openCaseDrawer(selectedCaseId, true);
       loadCases();
     } catch (err: any) {
       setError(err.message || "Failed to assign case");
@@ -258,7 +266,7 @@ export default function WelfarePage() {
       await welfareApi.updatePriority(selectedCaseId, newPriority, casePriorityReason.trim());
       setCaseActionSuccess(`Priority updated to ${newPriority}.`);
       setCasePriorityReason("");
-      openCaseDrawer(selectedCaseId);
+      openCaseDrawer(selectedCaseId, true);
       loadCases();
     } catch (err: any) {
       setError(err.message || "Failed to update priority");
@@ -280,7 +288,7 @@ export default function WelfarePage() {
       });
       setCaseActionSuccess("Case action and status recorded in audit trail.");
       setCaseActionNote("");
-      openCaseDrawer(selectedCaseId);
+      openCaseDrawer(selectedCaseId, true);
       loadCases();
     } catch (err: any) {
       setError(err.message || "Failed to record case action");
@@ -353,7 +361,7 @@ export default function WelfarePage() {
 
           <span className="px-3 py-1.5 rounded-full bg-[#ECFDF5] text-[#15803D] text-xs font-semibold border border-[#A7F3D0] flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4" />
-            <span>Row-Level Security Active</span>
+            <span>Server-Scoped Access Active</span>
           </span>
         </div>
       </div>
@@ -985,7 +993,7 @@ export default function WelfarePage() {
         }
         subtitle={
           selectedCaseDetail
-            ? `${selectedCaseDetail.rank_or_grade || "Personnel"} • ${selectedCaseDetail.unit?.unit_name || "Unit"}`
+            ? `${selectedCaseDetail.rank_or_grade || "—"} • ${selectedCaseDetail.unit?.unit_name || selectedCaseDetail.unit_name || "—"}`
             : "Welfare Case Record"
         }
         badge={
@@ -1112,10 +1120,12 @@ export default function WelfarePage() {
                       onChange={(e) => setCaseActionType(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-[#CFDDCE] rounded-lg text-xs font-mono text-[#182417] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
                     >
-                      <option value="MONITOR">1. Routine Welfare Monitoring</option>
-                      <option value="CONTACT_PERSONNEL">2. Contact &amp; 1-on-1 Interview</option>
-                      <option value="WELFARE_FOLLOWUP">3. Operational Welfare Follow-up</option>
-                      <option value="RECORD_OUTCOME">4. Final Resolution &amp; Outcome</option>
+                      <option value="WORKLOAD_REVIEW">1. Operational Workload Review</option>
+                      <option value="DISCUSSION">2. Discussion &amp; 1-on-1 Interview</option>
+                      <option value="CONTACT_ATTEMPT">3. Contact Attempt</option>
+                      <option value="REFERRAL">4. Medical / Welfare Referral</option>
+                      <option value="FOLLOW_UP">5. Scheduled Follow-up</option>
+                      <option value="CLOSE">6. Final Resolution &amp; Closure</option>
                     </select>
                   </div>
 

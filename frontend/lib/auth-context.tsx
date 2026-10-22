@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authApi, type AuthUser as ApiAuthUser } from "./api";
+import { authApi, clearStoredSession, setStoredSession, type AuthUser as ApiAuthUser } from "./api";
 
 export interface AuthUser extends ApiAuthUser {
   full_name?: string | null;
@@ -34,8 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     try {
       const userData = await authApi.me();
+      setStoredSession();
       setUser(userData);
     } catch {
+      clearStoredSession();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -46,21 +48,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser();
   }, []);
 
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setIsLoading(false);
+      router.replace("/login");
+    };
+    window.addEventListener("prahari:session-expired", onExpired);
+    return () => window.removeEventListener("prahari:session-expired", onExpired);
+  }, [router]);
+
   const login = async (username: string, password: string): Promise<AuthUser> => {
     setIsLoading(true);
     try {
       const res = await authApi.login(username, password);
       const authenticatedUser: AuthUser = res.user;
-
-      // Mobile Lockout for Admin: Administrative functions restricted to Web Station
-      if (typeof window !== "undefined" && (navigator.userAgent.includes("PrahariMobileApp") || navigator.userAgent.includes("SwastiMobileApp"))) {
-        if (authenticatedUser.role === "ADMIN") {
-          await authApi.logout();
-          setUser(null);
-          setIsLoading(false);
-          throw new Error("Access Denied: Administrative functions require the SWASTI Secure Web Console. Mobile access is restricted to Personnel, Commander, and Welfare roles.");
-        }
-      }
 
       setUser(authenticatedUser);
       setIsLoading(false);

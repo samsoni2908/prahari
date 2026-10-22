@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Shield,
   Lock,
@@ -17,18 +16,20 @@ import {
   EyeOff,
   ChevronLeft,
 } from "lucide-react";
-import { authApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-  const router = useRouter();
+  // Use the AuthContext login so the shared user state is populated immediately
+  // and role-based navigation is handled in one place (auth-context.tsx)
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!username || !password) {
       setError("Please provide both username and password.");
       return;
@@ -38,32 +39,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await authApi.login(username, password);
-      const role = res.user.role;
-
-      // Automatic role routing per AGENTS.md Section 4
-      if (role === "COMMANDER") {
-        router.push("/commander");
-      } else if (role === "WELFARE_OFFICER") {
-        router.push("/welfare");
-      } else if (role === "PERSONNEL") {
-        router.push("/personnel");
-      } else if (role === "ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/commander");
-      }
+      // AuthProvider.login() sets context user state AND router.push() to role portal
+      await login(username, password);
     } catch (err: any) {
       setError(err.message || "Authentication failed. Check your credentials.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillCredentials = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setError(null);
   };
 
   return (
@@ -164,7 +146,7 @@ export default function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form action="javascript:void(0)" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#3B4B3A]">
                 Username / Service ID
@@ -238,61 +220,6 @@ export default function LoginPage() {
             <span className="font-mono">CAPF Role-Gated Access</span>
           </div>
 
-          {/* Prototype Quick Fill Grid */}
-          <div className="bg-white rounded-xl p-4 border border-[#CFDDCE] shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#3B4B3A] uppercase tracking-wider">
-                Demo Accounts (Click to Fill)
-              </span>
-              <span className="text-[10px] text-[#677766] font-mono">Pass: prahari123</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillCredentials("demo_commander", "prahari123")}
-                className="p-2.5 rounded-lg bg-[#FAF9F5] hover:bg-[#EAF1E9] border border-[#CFDDCE] text-left transition-colors group"
-              >
-                <div className="font-semibold text-[#2C5127] text-xs">
-                  Commander
-                </div>
-                <div className="text-[10px] text-[#677766] font-mono truncate">demo_commander</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials("demo_welfare_officer", "prahari123")}
-                className="p-2.5 rounded-lg bg-[#FAF9F5] hover:bg-[#F3EBF7] border border-[#CFDDCE] text-left transition-colors group"
-              >
-                <div className="font-semibold text-[#5B2C78] text-xs">
-                  Welfare Officer
-                </div>
-                <div className="text-[10px] text-[#677766] font-mono truncate">demo_welfare_officer</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials("demo_personnel", "prahari123")}
-                className="p-2.5 rounded-lg bg-[#FAF9F5] hover:bg-[#EAF5EC] border border-[#CFDDCE] text-left transition-colors group"
-              >
-                <div className="font-semibold text-[#1B5E20] text-xs">
-                  Personnel (Member)
-                </div>
-                <div className="text-[10px] text-[#677766] font-mono truncate">demo_personnel</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials("demo_admin", "prahari123")}
-                className="p-2.5 rounded-lg bg-[#FAF9F5] hover:bg-[#FEF5E7] border border-[#CFDDCE] text-left transition-colors group"
-              >
-                <div className="font-semibold text-[#8C6609] text-xs">
-                  Administrator
-                </div>
-                <div className="text-[10px] text-[#677766] font-mono truncate">demo_admin</div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

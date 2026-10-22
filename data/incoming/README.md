@@ -1,0 +1,13 @@
+# PRAHARI Incoming Synthetic Data
+
+This directory accepts externally generated **synthetic** packages for offline validation. It is not a runtime database. Binding contracts: [database](../../docs/database.md), [analytics](../../docs/ml.md), [privacy](../../docs/rules.md).
+
+Existing package names `PRAHARI_APP_DATA_V2_seed26186.zip` and `PRAHARI_ML_DATA_V2_seed26186.zip` are legacy input formats, not proof of compatibility with the current canonical contracts. Preserve original packages; a versioned adapter must validate/map them without silently changing source semantics.
+
+Required package metadata: dataset/version, seed 26186, synthetic-only declaration, file checksums, exact headers/types, source/event known-at timestamps, reporting coverage, generator policy and target/feature versions. Operational source data, private synthetic fixtures and offline training/audit metadata remain separate. New prediction data must satisfy the versioned 30-day target definition in ml.md §12.1: actual unplanned-leave start, authoritative occurrence/effective time of service disruption, initiator/planning classification, prior approval/change references, correction history and complete follow-up coverage. No undefined LEAVE_EVENT_V1 name or old target/model score substitutes for those semantics. Feature metadata must match only source-verified members of the user-approved 15-feature scope in original relative order and the persisted shared pipeline in §6.1. Currently all 15 are deferred and no vector/artifact is certified; adding raw columns or an availability flag alone does not prove cutoff truth or parity.
+
+Validate headers, types, finite values, intervals, foreign keys, duplicates and coverage before an atomic import. Missing/unknown fields are explicit errors or documented unavailable states. Derived CSVs are rebuilt through normal analytics; private scores are recomputed by private scoring. Do not load an old prediction as a current approved artifact.
+
+The public API accepts only allowlisted CSV imports with documented limits, not ZIP archives or arbitrary paths. Offline ZIP handling must reject traversal/absolute paths and excessive extraction size before opening members. Private assessment fixtures are seeded through a restricted private path with explicit synthetic consent, not Admin raw-answer upload.
+
+Never include real personnel records, secrets or private answers in public exports/version control. Do not add raw synthetic packages to public version control without an explicit release decision; preserve files already present. Synthetic results support software demonstrations only, not claims of real-world predictive validity.

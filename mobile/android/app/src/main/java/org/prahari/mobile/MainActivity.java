@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView mErrorText;
 
     // Configured target server URL (change for production deployment)
-    private static final String DEFAULT_URL = "http://10.0.2.2:3000"; // Android Emulator to host
+    private static final String DEFAULT_URL = "https://prahari.up.railway.app/login";
     private String mTargetUrl = DEFAULT_URL;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -51,6 +51,13 @@ public class MainActivity extends AppCompatActivity {
             mTargetUrl = BuildConfig.SERVER_URL;
         }
         mTargetUrl = mTargetUrl.replaceAll("[\"\'\\s]", "").trim();
+        Uri target = Uri.parse(mTargetUrl);
+        if (target.getHost() == null || (!"https".equalsIgnoreCase(target.getScheme())
+                && !(BuildConfig.DEBUG && "http".equalsIgnoreCase(target.getScheme())
+                && ("10.0.2.2".equals(target.getHost()) || "localhost".equals(target.getHost()))))) {
+            showError("Invalid application URL. Release builds require HTTPS.");
+            return;
+        }
 
         // Enable Chrome remote debugging on debug builds
         if (BuildConfig.DEBUG) {
@@ -58,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Configure WebView
-        mWebView.setBackgroundColor(0xFF030712);
+        mWebView.setBackgroundColor(0xFFFAF9F5);
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
@@ -67,28 +74,21 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setSupportZoom(false);
         webSettings.setBuiltInZoomControls(false);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        webSettings.setUserAgentString(webSettings.getUserAgentString() + " SwastiMobileApp/" + BuildConfig.VERSION_NAME);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowContentAccess(true);
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        webSettings.setUserAgentString(webSettings.getUserAgentString() + " PrahariApp/" + BuildConfig.VERSION_NAME);
+        webSettings.setAllowFileAccess(false);
+        webSettings.setAllowContentAccess(false);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        // Enable cookies & third-party cookies (essential for session auth)
+        // Same-origin session cookies; third-party cookies are not required.
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(mWebView, true);
+        cookieManager.setAcceptThirdPartyCookies(mWebView, false);
 
         // WebView Client
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                // Security Check: Administrative functions are restricted to Web Station
-                if (url != null && url.contains("/admin")) {
-                    view.stopLoading();
-                    CookieManager.getInstance().removeAllCookies(null);
-                    showError("Access Denied: Administrative functions require the SWASTI Secure Web Console. Mobile access is restricted to Personnel, Commander, and Welfare roles.");
-                    return;
-                }
                 mProgressBar.setVisibility(View.VISIBLE);
                 mErrorContainer.setVisibility(View.GONE);
                 mWebView.setVisibility(View.VISIBLE);
@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && error != null) {
                         desc = " (" + error.getDescription() + ")";
                     }
-                    showError("Unable to reach PRAHARI secure server at " + mTargetUrl + desc + ". Please ensure phone and PC are on the same Wi-Fi.");
+                    showError("Unable to reach the PRAHARI server at " + mTargetUrl + desc + ". Check network connectivity.");
                 }
             }
 
@@ -125,37 +125,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                String urlStr = uri != null ? uri.toString() : "";
-                if (urlStr.contains("/admin")) {
-                    view.stopLoading();
-                    CookieManager.getInstance().removeAllCookies(null);
-                    showError("Access Denied: Administrative functions require the PRAHARI Secure Web Console. Mobile access is restricted to Personnel, Commander, and Welfare roles.");
-                    return true;
-                }
-                String host = uri != null ? uri.getHost() : null;
-                String targetHost = null;
-                try {
-                    targetHost = Uri.parse(mTargetUrl).getHost();
-                } catch (Exception ignored) {}
-
-                // Allow in-app navigation for same host, local IP addresses, and PRAHARI domains
-                if (host != null) {
-                    if ((targetHost != null && host.equalsIgnoreCase(targetHost))
-                            || host.equals("localhost")
-                            || host.equals("10.0.2.2")
-                            || host.startsWith("10.")
-                            || host.startsWith("192.168.")
-                            || host.startsWith("172.")
-                            || host.contains("railway.app")
-                            || host.contains("prahari")) {
-                        return false;
-                    }
-                }
+                Uri trusted = Uri.parse(mTargetUrl);
+                if (uri != null && uri.getHost() != null
+                        && uri.getHost().equalsIgnoreCase(trusted.getHost())
+                        && uri.getScheme() != null && uri.getScheme().equalsIgnoreCase(trusted.getScheme())
+                        && uri.getPort() == trusted.getPort()) return false;
                 // External links open in default browser
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                } catch (Exception ignored) {}
+                if (uri != null && ("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))) {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) {}
+                }
                 return true;
             }
         });
@@ -174,14 +152,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
-                android.util.Log.d("PrahariApp", consoleMessage.message() + " [" + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber() + "]");
+                if (BuildConfig.DEBUG) android.util.Log.d("PrahariApp", consoleMessage.message());
                 return true;
             }
         });
 
         // Pull to refresh
         mSwipeRefresh.setOnRefreshListener(() -> mWebView.reload());
-        mSwipeRefresh.setColorSchemeColors(0xFF1565C0, 0xFF1E88E5, 0xFF0D1B2A);
+        mSwipeRefresh.setColorSchemeColors(0xFF2C5127, 0xFF15803D, 0xFFCFDDCE);
 
         // Retry button in error screen
         findViewById(R.id.btnRetry).setOnClickListener(v -> {

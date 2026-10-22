@@ -1,0 +1,5 @@
+split,n_rows,boundary_start,boundary_end
+train,7200,2025-09-26,2026-04-14
+validation,1500,2026-04-15,2026-06-20
+test,3000,2026-06-21,2026-09-25
+PURGED_AT_BOUNDARY,2700,,

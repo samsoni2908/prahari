@@ -1,0 +1,105 @@
+{
+  "model_name": "Model-A (Operational Workload & Recovery Decision Support)",
+  "model_version": "1.0.0",
+  "target_name": "next_30d_leave_anomaly",
+  "target_version": "v2.1-approved-leave-lifecycle",
+  "feature_spec_version": "v2.1-SetB-15ops",
+  "feature_names": [
+    "duty_hours_7d",
+    "duty_hours_30d",
+    "night_duty_count_14d",
+    "night_duty_ratio_30d",
+    "consecutive_duty_days",
+    "min_rest_hours_14d",
+    "avg_rest_hours_30d",
+    "quick_return_count_30d",
+    "deployment_days_30d",
+    "training_days_30d",
+    "staffing_ratio_7d",
+    "workload_change_14v14",
+    "ewma_workload",
+    "baseline_z_workload",
+    "peer_deviation_workload"
+  ],
+  "feature_count": 15,
+  "created_at_utc": "2026-10-04T16:49:00.860206+00:00",
+  "artifact_sha256": "2e540b4ca0c3db9cf32b7601ac23319ead74db5c18ac5fd7c466b2ef4ae290b9",
+  "artifact_filename": "model_a_governed_artifact.joblib",
+  "training_data_meta": {
+    "train_rows": 7200,
+    "train_date_min": "2025-09-29",
+    "train_date_max": "2026-03-09",
+    "embargo_days": 70,
+    "test_rows": 2100,
+    "test_date_min": "2026-05-18",
+    "test_date_max": "2026-07-27",
+    "split_method": "chronological_temporal_with_embargo"
+  },
+  "validation_cohort_provenance": {
+    "validation_dataset_file": "model_a_frozen_validation_dataset.csv",
+    "validation_dataset_sha256": "359904e8c4e544640cce7b7406f1ac4155206785e91a3494bdc2d75969853530",
+    "generator_version": "v2.1-frozen-prototype",
+    "development_seed": 26186,
+    "validation_seed": 27186,
+    "rows": 2100,
+    "positives": 237,
+    "negatives": 1863,
+    "synthetic_prototype_prevalence": 0.112857,
+    "prevalence_note": "Synthetic prototype event prevalence under frozen generator v2.1-frozen-prototype (not real-world prevalence)",
+    "personnel_count": 300,
+    "date_range": [
+      "2026-05-18",
+      "2026-07-27"
+    ]
+  },
+  "evaluation_summary": {
+    "evaluation_type": "synthetic prototype validation under frozen operational-event assumptions",
+    "roc_auc": 0.7747,
+    "pr_auc": 0.3469,
+    "brier_score": 0.0883,
+    "expected_calibration_error": 0.0279,
+    "calibration_slope": 1.2652,
+    "calibration_intercept": 0.1505,
+    "precision_at_015": 0.2492,
+    "recall_at_015": 0.6371,
+    "f1_at_015": 0.3582,
+    "lead_time_mean_days": 13.63,
+    "lead_time_median_days": 12.0,
+    "first_alert_lead_time_mean_days": 17.79
+  },
+  "threshold_policy": {
+    "policy_version": "v1.0-provisional-synthetic-prototype",
+    "threshold_label": "PROVISIONAL_SYNTHETIC_PROTOTYPE_THRESHOLD_V1",
+    "tau_high": 0.15,
+    "tau_med": 0.075,
+    "bands": {
+      "LOW": [
+        0.0,
+        39.9
+      ],
+      "MEDIUM": [
+        40.0,
+        69.9
+      ],
+      "HIGH": [
+        70.0,
+        100.0
+      ]
+    },
+    "safety_floors_mode": "PASS_THROUGH",
+    "safety_floors_status": "NO_APPROVED_SAFETY_FLOORS",
+    "approved_by": "USER_DIRECTIVE"
+  },
+  "component_versions": {
+    "wsi_version": "v1.0-deterministic-7factor",
+    "baseline_version": "v1.0-median-mad",
+    "ewma_version": "v1.0-lambda0.30",
+    "peer_anomaly_version": "v1.0-isolation-forest"
+  },
+  "env_compatibility": {
+    "python_version": "3.11.16",
+    "sklearn_version": "1.9.1",
+    "joblib_version": "1.6.0",
+    "numpy_version": "2.4.6"
+  }
+}

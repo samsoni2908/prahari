@@ -16,6 +16,27 @@ __pycache__/
 !.env.example
 
 *.log
+.coverage
+coverage/
+htmlcov/
+
+# Credentials, signing material and machine-local configuration
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+credentials*.json
+google-services.json
+local.properties
+
+# Android/Gradle generated output
+.gradle/
+**/.gradle/
+**/build/
+*.apk
+*.aab
 
 .vscode/
 .idea/
@@ -23,12 +44,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# PRAHARI internal agent specifications
-AGENTS.md
+# Optional local continuation history; not part of the public canonical documentation set
 MEMORY.md
-architecture.md
-database.md
-design.md
-prd.md
-rules.md
-task.md
+
+# Files retained for manual review; never publish or import from here.
+/delete/
+/scratch/
+/pytest-cache-files-*/

@@ -1,12 +1,13 @@
 .git
 .gitignore
-tests/
-__pycache__
+.venv
+__pycache__/
 *.pyc
 *.pyo
-.pytest_cache
+.pytest_cache/
 .coverage
 htmlcov/
-*.md
+tests/
+tools/
 .env
 .env.*

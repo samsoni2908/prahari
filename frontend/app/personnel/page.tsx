@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Activity,
   ShieldCheck,
@@ -28,11 +29,13 @@ import { Button } from "@/components/common/Button";
 import { LoadingState, EmptyState } from "@/components/common/States";
 
 export default function PersonnelPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "profile" | "duties" | "leave" | "wellbeing" | "support" | "privacy"
   >("dashboard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unavailableSections, setUnavailableSections] = useState<string[]>([]);
 
   // States
   const [profile, setProfile] = useState<any>(null);
@@ -49,42 +52,45 @@ export default function PersonnelPage() {
 
   // Support request form
   const [supportType, setSupportType] = useState("LEAVE_ASSISTANCE");
-  const [supportPriority, setSupportPriority] = useState("NORMAL");
+  const [supportPriority, setSupportPriority] = useState("LOW");
   const [supportDetails, setSupportDetails] = useState("");
   const [supportMsg, setSupportMsg] = useState<string | null>(null);
   const [submittingSupport, setSubmittingSupport] = useState(false);
 
   useEffect(() => {
     loadData();
-
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      if (tab === "profile") setActiveTab("profile");
-      else if (tab === "duties" || tab === "deployment") setActiveTab("duties");
-      else if (tab === "leave") setActiveTab("leave");
-      else if (tab === "wellbeing") setActiveTab("wellbeing");
-      else if (tab === "support") setActiveTab("support");
-      else if (tab === "privacy") setActiveTab("privacy");
-      else if (tab === "dashboard" || tab === "risk") setActiveTab("dashboard");
-    }
   }, []);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "profile") setActiveTab("profile");
+    else if (tab === "duties" || tab === "deployment") setActiveTab("duties");
+    else if (tab === "leave") setActiveTab("leave");
+    else if (tab === "wellbeing") setActiveTab("wellbeing");
+    else if (tab === "support") setActiveTab("support");
+    else if (tab === "privacy" || tab === "settings") setActiveTab("privacy");
+    else setActiveTab("dashboard");
+  }, [searchParams]);
 
   async function loadData() {
     setLoading(true);
     setError(null);
+    const failed: string[] = [];
+    const load = async <T,>(label: string, operation: Promise<T>, fallback: T): Promise<T> => {
+      try { return await operation; } catch { failed.push(label); return fallback; }
+    };
     try {
       const [prof, cons, risk, deps, dut, rst, lv, reqs, priv, notifs] = await Promise.all([
-        personnelApi.getProfile().catch(() => null),
-        personnelApi.getConsent().catch(() => null),
-        personnelApi.getMyRisk().catch(() => null),
-        personnelApi.getMyDeployments().catch(() => []),
-        personnelApi.getMyDuties().catch(() => []),
-        personnelApi.getMyRest().catch(() => []),
-        personnelApi.getMyLeave().catch(() => []),
-        personnelApi.listSupportRequests().catch(() => []),
-        personnelApi.getPrivacyHistory().catch(() => []),
-        personnelApi.getNotifications().catch(() => []),
+        load("profile", personnelApi.getProfile(), null),
+        load("consent", personnelApi.getConsent(), null),
+        load("operational analytics", personnelApi.getMyRisk(), null),
+        load("deployments", personnelApi.getMyDeployments(), []),
+        load("duties", personnelApi.getMyDuties(), []),
+        load("rest", personnelApi.getMyRest(), []),
+        load("leave", personnelApi.getMyLeave(), []),
+        load("support requests", personnelApi.listSupportRequests(), []),
+        load("access history", personnelApi.getPrivacyHistory(), []),
+        load("notifications", personnelApi.getNotifications(), []),
       ]);
 
       setProfile(prof);
@@ -98,8 +104,10 @@ export default function PersonnelPage() {
       setPrivacyHistory(priv || []);
       setNotifications(notifs || []);
 
-      const checks = await personnelApi.listSelfChecks().catch(() => []);
+      const checks = await load("self-check history", personnelApi.listSelfChecks(), []);
       setSelfChecks(checks || []);
+      setUnavailableSections(failed);
+      if (failed.length) setError(`Unable to load: ${failed.join(", ")}. Those sections are unavailable until refreshed.`);
     } catch (err: any) {
       setError(err.message || "Failed to load personnel records");
     } finally {
@@ -141,9 +149,10 @@ export default function PersonnelPage() {
   }
 
   // Truthful strain status derivation without hardcoded scores
-  const wsiValue: number | null = riskData?.wsi?.value ?? riskData?.current_risk_score ?? null;
-  const wsiStatus: string = riskData?.wsi?.status ?? (wsiValue !== null ? "AVAILABLE" : "NOT_COMPUTED");
-  const riskBand: "LOW" | "MEDIUM" | "HIGH" = (riskData?.risk_band as any) || (wsiValue !== null ? (wsiValue >= 70 ? "HIGH" : wsiValue >= 40 ? "MEDIUM" : "LOW") : "LOW");
+  const rawWsi = riskData?.wsi?.value;
+  const wsiValue: number | null = riskData?.wsi?.status === "VALID" && typeof rawWsi === "number" && Number.isFinite(rawWsi) ? rawWsi : null;
+  const wsiStatus: string = unavailableSections.includes("operational analytics") ? "COMPUTATION_ERROR" : riskData?.wsi?.status ?? "NOT_COMPUTED";
+  const riskBand: "LOW" | "MEDIUM" | "HIGH" | null = wsiValue === null ? null : wsiValue >= 70 ? "HIGH" : wsiValue >= 40 ? "MEDIUM" : "LOW";
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -161,10 +170,10 @@ export default function PersonnelPage() {
           <p className="text-xs text-[#677766] mt-1 font-mono">
             Service ID:{" "}
             <strong className="text-[#182417]">
-              {profile?.pseudo_id || "P-4401"}
+              {profile?.pseudo_id || profile?.personnel_code || "—"}
             </strong>{" "}
-            ({profile?.rank_or_grade || "Havildar"}) • Unit:{" "}
-            {profile?.unit?.unit_name || "1-BN"}
+            ({profile?.rank_or_grade || "—"}) • Unit:{" "}
+            {profile?.unit?.unit_name || profile?.unit_name || "—"}
           </p>
         </div>
 
@@ -181,7 +190,7 @@ export default function PersonnelPage() {
 
           <span className="px-3 py-1.5 rounded-full bg-[#FAF9F5] text-[#2C5127] text-xs font-semibold border border-[#CFDDCE] flex items-center gap-1.5">
             <Lock className="h-3.5 w-3.5 text-[#15803D]" />
-            <span>RLS Isolated Session</span>
+            <span>Scoped Private Session</span>
           </span>
         </div>
       </div>
@@ -250,29 +259,27 @@ export default function PersonnelPage() {
                   : "Certified operational data coverage accumulating"
               }
               icon={<Activity className="h-4 w-4" />}
-              status={riskBand === "HIGH" ? "critical" : riskBand === "MEDIUM" ? "elevated" : "normal"}
+              status={riskBand === "HIGH" ? "critical" : riskBand === "MEDIUM" ? "elevated" : riskBand === "LOW" ? "normal" : "neutral"}
             />
 
             <StatCard
               title="Workload vs Baseline (EWMA)"
               value={
-                riskData?.current_ewma
-                  ? `${riskData.current_ewma} / ${riskData?.baseline_mean || "—"} hrs`
-                  : "Baseline: Pending History"
+                riskData?.trend?.status === "VALID" && riskData?.baseline?.status === "VALID"
+                  ? `${riskData.trend.current_ewma?.toFixed(1) ?? "—"} / ${riskData.baseline.median?.toFixed(1) ?? "—"} WSI`
+                  : `${riskData?.trend?.status ?? "NOT_COMPUTED"} / ${riskData?.baseline?.status ?? "BASELINE_UNAVAILABLE"}`
               }
               subtitle={
-                riskData?.current_ewma
-                  ? "Operational strain monitored"
-                  : "Personal Median/MAD baseline calculation in progress"
+                riskData?.trend?.status === "VALID" ? "Current EWMA / personal median" : "History or current observation unavailable"
               }
               icon={<TrendingUp className="h-4 w-4" />}
-              status="normal"
+              status="neutral"
             />
 
             <StatCard
               title="Confidential Support Requests"
-              value={supportRequests.length}
-              subtitle="Welfare Officer assigned"
+              value={unavailableSections.includes("support requests") ? "UNAVAILABLE" : supportRequests.length}
+              subtitle="Own confidential requests"
               icon={<HeartHandshake className="h-4 w-4" />}
               status="neutral"
             />
@@ -282,25 +289,19 @@ export default function PersonnelPage() {
           <div className="bg-white rounded-2xl border border-[#CFDDCE] p-6 shadow-sm space-y-4">
             <h3 className="font-serif text-base font-bold text-[#182417] flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-[#2C5127]" />
-              <span>Personal Welfare Strain Indicator Trend</span>
+              <span>Operational WSI Trend</span>
             </h3>
             <div className="space-y-2">
-              {riskData?.trend && riskData.trend.length > 0 ? (
-                riskData.trend.map((t: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center p-3 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] text-xs font-mono"
-                  >
-                    <span className="text-[#3B4B3A]">{t.date}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[#182417] font-bold">{t.score} pts</span>
-                      <RiskBadge level={t.band} size="sm" />
-                    </div>
-                  </div>
-                ))
+              {riskData?.trend?.status === "VALID" ? (
+                <div className="p-4 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE] text-xs font-mono">
+                  <div>Trend: {riskData.trend.trend}</div>
+                  <div>Current EWMA: {riskData.trend.current_ewma?.toFixed(1) ?? "UNAVAILABLE"} WSI points</div>
+                  <div>Change: {riskData.trend.delta?.toFixed(1) ?? "UNAVAILABLE"} points</div>
+                  <div>As of: {riskData.wsi?.as_of ?? "UNAVAILABLE"}</div>
+                </div>
               ) : (
                 <div className="text-xs text-[#677766] p-4 text-center bg-[#FAF9F5] rounded-xl border border-[#CFDDCE]">
-                  Trend telemetry: Status {wsiStatus}. Certified multi-day snapshot window accumulating under operational scheduler.
+                  Trend: {riskData?.trend?.status ?? wsiStatus}. {riskData?.trend?.reason ?? "No validated trend is available."}
                 </div>
               )}
             </div>
@@ -319,7 +320,7 @@ export default function PersonnelPage() {
               <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE]">
                 <span className="text-[#677766] block text-[10px] uppercase">Service Code</span>
                 <span className="text-[#182417] font-bold text-sm">
-                  {profile?.personnel_code || "IN-26186"}
+                  {profile?.personnel_code || profile?.pseudo_id || "—"}
                 </span>
               </div>
               <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#CFDDCE]">
@@ -506,7 +507,7 @@ export default function PersonnelPage() {
               </div>
               <p className="text-xs text-[#3B4B3A] mt-1 max-w-xl leading-relaxed">
                 Participation in well-being assessments is voluntary. Raw answers are encrypted and
-                strictly isolated under PostgreSQL Row-Level Security. They are never shared with
+                isolated by server-side authorization and scoped queries. They are never shared with
                 your commander.
               </p>
             </div>
@@ -639,8 +640,10 @@ export default function PersonnelPage() {
                   rows={3}
                   value={supportDetails}
                   onChange={(e) => setSupportDetails(e.target.value)}
-                  placeholder="Confidential explanation of the support requested..."
+                  placeholder="Confidential explanation of the support requested (minimum 10 characters)..."
                   required
+                  minLength={10}
+                  maxLength={2000}
                   className="w-full px-3.5 py-2.5 bg-white border border-[#CFDDCE] rounded-lg text-xs md:text-sm text-[#182417] placeholder-[#9AA899] focus:outline-none focus:ring-2 focus:ring-[#2C5127]"
                 />
               </div>

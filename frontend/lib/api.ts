@@ -1,5 +1,8 @@
 const RAW_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
-const API_BASE_URL = RAW_URL.replace(/\/api\/v1\/?$/, "");
+// In browser runtime, always route through same-origin Next.js rewrites (/api/v1) to satisfy connect-src 'self' and preserve same-origin CSRF cookies
+const API_BASE_URL = typeof window !== "undefined" && (RAW_URL.includes("localhost:8000") || RAW_URL.includes("127.0.0.1:8000"))
+  ? ""
+  : RAW_URL.replace(/\/api\/v1\/?$/, "");
 let csrfToken: string | null = null;
 
 export type AppRole = "PERSONNEL" | "COMMANDER" | "WELFARE_OFFICER" | "ADMIN";
@@ -26,22 +29,13 @@ export interface CommanderOverview {
   drivers: OperationalDriver[];
 }
 
-export function getStoredRole(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("prahari_role");
-}
-
-export function getStoredUser(): any | null {
-  if (typeof window === "undefined") return null;
-  const userStr = localStorage.getItem("prahari_user");
-  return userStr ? JSON.parse(userStr) : null;
-}
-
-export function setStoredSession(role: string, user: any, token?: string) {
+export function setStoredSession() {
   if (typeof window !== "undefined") {
-    localStorage.setItem("prahari_role", role);
-    localStorage.setItem("prahari_user", JSON.stringify(user));
-    if (token) localStorage.setItem("prahari_token", token);
+    localStorage.removeItem("prahari_token");
+    localStorage.removeItem("prahari_role");
+    localStorage.removeItem("prahari_user");
+    document.cookie = "prahari_logged_in=1; path=/; SameSite=Lax; max-age=54000";
+    document.cookie = "prahari_role=; path=/; max-age=0; SameSite=Lax";
   }
 }
 
@@ -50,15 +44,12 @@ export function clearStoredSession() {
     localStorage.removeItem("prahari_token");
     localStorage.removeItem("prahari_role");
     localStorage.removeItem("prahari_user");
+    document.cookie = "prahari_logged_in=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "prahari_role=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "prahari_session=; path=/; max-age=0; SameSite=Lax";
   }
 }
 
-export const DEMO_CREDENTIALS: Record<string, { u: string; p: string; label: string }> = {
-  COMMANDER: { u: "demo_commander", p: "prahari123", label: "Commander (1-BN)" },
-  WELFARE_OFFICER: { u: "demo_welfare_officer", p: "prahari123", label: "Welfare Officer" },
-  PERSONNEL: { u: "demo_personnel", p: "prahari123", label: "Personnel (Service Member)" },
-  ADMIN: { u: "demo_admin", p: "prahari123", label: "System Administrator" },
-};
 
 export function generateIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -73,22 +64,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set("Content-Type", "application/json");
   }
 
-  // Inject Bearer token if stored in session
-  if (!headers.has("Authorization") && typeof window !== "undefined") {
-    const token = localStorage.getItem("prahari_token");
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
+  const isMutation = options.method && !["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase());
+  if (isMutation) {
+    if (!headers.has("Idempotency-Key") && !headers.has("idempotency-key")) {
+      headers.set("Idempotency-Key", generateIdempotencyKey());
     }
   }
 
-  const bearer = /^Bearer\s+\S+/i.test(headers.get("Authorization") || "");
-  if (!bearer && options.method && !["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase()) && typeof document !== "undefined") {
+  if (isMutation && typeof document !== "undefined") {
     if (!headers.has("X-CSRF-Token")) {
       if (!csrfToken) {
         const csrfRes = await request<{ csrf_token: string }>("/api/v1/auth/csrf");
         csrfToken = csrfRes.csrf_token;
       }
-      headers.set("X-CSRF-Token", csrfToken);
+      if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
     }
   }
 
@@ -99,6 +88,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!res.ok) {
+    if (res.status === 401 && !endpoint.startsWith("/api/v1/auth/login") && !endpoint.startsWith("/api/v1/auth/csrf")) {
+      clearStoredSession();
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("prahari:session-expired"));
+    }
     let errorMsg = `API Error ${res.status}: ${res.statusText}`;
     try {
       const errJson = await res.json();
@@ -122,7 +115,7 @@ export const authApi = {
       body: JSON.stringify({ username, password }),
     });
     csrfToken = data.csrf_token;
-    setStoredSession(data.user.role, data.user, data.access_token);
+    setStoredSession();
     return data;
   },
   me: () => request<AuthUser>("/api/v1/auth/me"),
@@ -158,31 +151,72 @@ export const commanderApi = {
     params.append("limit", limit.toString());
     return request<{ items: any[]; next_cursor: string | null }>(`/api/v1/alerts?${params.toString()}`);
   },
-  acknowledgeAlert: (alertId: string, notes?: string, idempotencyKey?: string) =>
+  acknowledgeAlert: (alertId: string, expectedRevision: string, reasonCode = "REVIEWED", idempotencyKey?: string) =>
     request<any>(`/api/v1/alerts/${alertId}/acknowledge`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey || generateIdempotencyKey() },
-      body: JSON.stringify({ notes: notes || "Acknowledged by commander in operational review" }),
+      body: JSON.stringify({ expected_revision: expectedRevision, reason_code: reasonCode }),
     }),
-  resolveAlert: (alertId: string, notes?: string, idempotencyKey?: string) =>
+  resolveAlert: (alertId: string, expectedRevision: string, reasonCode: string, idempotencyKey?: string) =>
     request<any>(`/api/v1/alerts/${alertId}/resolve`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey || generateIdempotencyKey() },
-      body: JSON.stringify({ notes: notes || "Resolved by commander in operational review" }),
+      body: JSON.stringify({ expected_revision: expectedRevision, reason_code: reasonCode }),
     }),
   getScenarios: () => request<any[]>("/api/v1/commander/scenarios"),
+  createScenario: (payload: { scenario_name: string; cutoff: string; target_reduction_percent: number }) =>
+    request<any>("/api/v1/commander/scenarios", {
+      method: "POST",
+      headers: { "Idempotency-Key": generateIdempotencyKey() },
+      body: JSON.stringify(payload),
+    }),
   getScenario: (scenarioId: string) => request<any>(`/api/v1/commander/scenarios/${scenarioId}`),
   getScenarioComparison: (scenarioId: string) => request<any>(`/api/v1/commander/scenarios/${scenarioId}/comparison`),
+  getScenarioOutcome: (scenarioId: string) =>
+    request<any>(`/api/v1/commander/scenarios/${scenarioId}/outcomes`),
+  recordScenarioImplementation: (scenarioId: string, payload: {
+    approval_id: string;
+    expected_revision: string;
+    result: "IMPLEMENTED" | "NOT_IMPLEMENTED";
+    effective_at?: string;
+    external_reference?: string;
+    reason_code?: string;
+    confirm_approved_assignments?: boolean;
+    synthetic_replay_clock?: string;
+  }) => request<any>(`/api/v1/commander/scenarios/${scenarioId}/implementation`, {
+    method: "POST",
+    headers: { "Idempotency-Key": generateIdempotencyKey() },
+    body: JSON.stringify(payload),
+  }),
+  observeScenarioOutcome: (scenarioId: string, syntheticReplayClock?: string) =>
+    request<any>(`/api/v1/commander/scenarios/${scenarioId}/outcomes/observe`, {
+      method: "POST",
+      headers: { "Idempotency-Key": generateIdempotencyKey() },
+      body: JSON.stringify(syntheticReplayClock ? { synthetic_replay_clock: syntheticReplayClock } : {}),
+    }),
+  reviewScenarioOutcome: (scenarioId: string, payload: { expected_revision: string; review_note: string }) =>
+    request<any>(`/api/v1/commander/scenarios/${scenarioId}/outcomes/review`, {
+      method: "POST",
+      headers: { "Idempotency-Key": generateIdempotencyKey() },
+      body: JSON.stringify(payload),
+    }),
   decideScenario: (scenarioId: string, payload: {
     decision: "ACCEPT" | "MODIFY" | "REJECT";
-    expected_revision: string;
-    rationale: string;
+    expected_revision?: string;
+    reason?: string;
+    rationale?: string;
     modified_changes?: any[];
+    target_reduction_percent?: number;
   }, idempotencyKey?: string) =>
     request<any>(`/api/v1/commander/scenarios/${scenarioId}/decide`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey || generateIdempotencyKey() },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        decision: payload.decision,
+        reason: payload.reason || payload.rationale || "Operational decision recorded by commander",
+        ...(payload.expected_revision ? { expected_revision: payload.expected_revision } : {}),
+        ...(payload.target_reduction_percent !== undefined ? { target_reduction_percent: payload.target_reduction_percent } : {}),
+      }),
     }),
   getUnit: (unitId?: string) =>
     request<any>(unitId ? `/api/v1/commander/unit?unit_id=${unitId}` : "/api/v1/commander/unit"),
@@ -357,7 +391,10 @@ export const adminApi = {
     request<any>("/api/v1/admin/personnel", {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey || generateIdempotencyKey() },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        pseudo_id: payload.pseudo_id || `PERS-${payload.personnel_code}`,
+      }),
     }),
   transferPersonnel: (personnelId: string, payload: { target_unit_id: string; reason_code?: string; reason?: string }, idempotencyKey?: string) =>
     request<any>(`/api/v1/admin/personnel/${personnelId}/transfer`, {
@@ -365,7 +402,7 @@ export const adminApi = {
       headers: { "Idempotency-Key": idempotencyKey || generateIdempotencyKey() },
       body: JSON.stringify({
         target_unit_id: payload.target_unit_id,
-        reason_code: payload.reason_code || payload.reason || "OPERATIONAL_NEED",
+        reason_code: payload.reason_code || (payload.reason === "UNIT_TRANSFER" ? "UNIT_TRANSFER" : "UNIT_TRANSFER"),
       }),
     }),
   listUnits: () => request<any[]>("/api/v1/admin/units"),
@@ -460,4 +497,3 @@ export const adminApi = {
       }),
     }),
 };
-

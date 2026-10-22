@@ -1,0 +1,37 @@
+{
+  "engine_name": "Engine-B (Private Wellbeing Decision Support)",
+  "engine_version": "1.0.0-deterministic",
+  "supervised_model_status": "NOT_TRAINED",
+  "training_gate_status": "ENGINE_B_TRAINING_GATE_NOT_FINALIZED",
+  "instrument_authority_status": "INSTRUMENT_NOT_FINALIZED",
+  "framework_type": "INSTRUMENT_GENERIC_ADAPTER_FRAMEWORK",
+  "runtime_behavior": "NEVER_TRAINS",
+  "created_at_utc": "2026-10-04T17:50:00.000000+00:00",
+  "privacy_boundaries": {
+    "raw_storage_table": "wellbeing_private",
+    "derived_storage_table": "wellbeing_results",
+    "personnel_access": "OWN_RAW_AND_DERIVED",
+    "welfare_access": "NOT_SHARED_DEFAULT_RAW_NEVER",
+    "commander_access": "TOTAL_DENIAL",
+    "admin_access": "GOVERNANCE_METADATA_ONLY"
+  },
+  "canonical_states": [
+    "ENGINE_B_AVAILABLE",
+    "INSTRUMENT_NOT_ACTIVATED",
+    "ENGINE_B_MODEL_UNAVAILABLE",
+    "INSUFFICIENT_HISTORY",
+    "NOT_SHARED",
+    "INVALID_RESPONSE"
+  ],
+  "neutral_attention_categories": [
+    "ROUTINE",
+    "ELEVATED_ATTENTION",
+    "UNAVAILABLE"
+  ],
+  "neutral_trend_directions": [
+    "STABLE",
+    "IMPROVING",
+    "DECLINING",
+    "INSUFFICIENT_HISTORY"
+  ]
+}

@@ -1,16 +1,19 @@
-name: Build SWASTI Mobile APKs
+name: Build PRAHARI Unified Release APK
+
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
     inputs:
       server_url:
-        description: 'Server URL for the APK to connect to'
-        required: false
-        default: 'https://swasti.up.railway.app'
+        description: 'Deployed HTTPS PRAHARI web application URL'
+        required: true
+        default: 'https://prahari.up.railway.app'
 
 jobs:
   build-apks:
-    name: Build Unified & Multi-Role APKs (Excluding Admin)
+    name: Build signed unified APK
     runs-on: ubuntu-latest
 
     steps:
@@ -29,25 +32,56 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Generate Wrapper and Build APKs
+      - name: Generate Wrapper and Build Signed Release APK
         working-directory: mobile/android
+        env:
+          KEYSTORE_B64: ${{ secrets.PRAHARI_ANDROID_KEYSTORE_BASE64 }}
+          PRAHARI_KEYSTORE_PASSWORD: ${{ secrets.PRAHARI_ANDROID_KEYSTORE_PASSWORD }}
+          PRAHARI_KEY_ALIAS: ${{ secrets.PRAHARI_ANDROID_KEY_ALIAS }}
+          PRAHARI_KEY_PASSWORD: ${{ secrets.PRAHARI_ANDROID_KEY_PASSWORD }}
+          SERVER_URL: ${{ inputs.server_url }}
         run: |
+          set -euo pipefail
+          KEYSTORE_PATH="$RUNNER_TEMP/prahari-release.jks"
+          trap 'rm -f "$KEYSTORE_PATH"' EXIT
+          [[ "$SERVER_URL" == https://* ]] || { echo 'Release URL must use HTTPS'; exit 1; }
+          test -n "$KEYSTORE_B64"
+          test -n "$PRAHARI_KEYSTORE_PASSWORD"
+          test -n "$PRAHARI_KEY_ALIAS"
+          test -n "$PRAHARI_KEY_PASSWORD"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+          export PRAHARI_KEYSTORE_PATH="$KEYSTORE_PATH"
           gradle wrapper --gradle-version 8.4
           chmod +x gradlew
-          TARGET_URL="${{ inputs.server_url || 'https://swasti.up.railway.app' }}"
-          ./gradlew assemblePersonnelDebug assembleCommanderDebug assembleWelfareDebug assembleUnifiedDebug -PSERVER_URL="$TARGET_URL" --stacktrace
+          ./gradlew assembleUnifiedRelease -PSERVER_URL="$SERVER_URL" --stacktrace
+          APK_PATH="app/build/outputs/apk/unified/release/app-unified-release.apk"
+          test -f "$APK_PATH"
 
-      - name: Organize APK Artifacts
-        run: |
-          mkdir -p dist/apks
-          cp mobile/android/app/build/outputs/apk/personnel/debug/*.apk dist/apks/swasti-personnel.apk || true
-          cp mobile/android/app/build/outputs/apk/commander/debug/*.apk dist/apks/swasti-commander.apk || true
-          cp mobile/android/app/build/outputs/apk/welfare/debug/*.apk dist/apks/swasti-welfare.apk || true
-          cp mobile/android/app/build/outputs/apk/unified/debug/*.apk dist/apks/swasti-unified.apk || true
+          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$BUILD_TOOLS_DIR/apksigner"
+          test -x "$BUILD_TOOLS_DIR/aapt"
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs "$APK_PATH"
+
+          BADGING="$("$BUILD_TOOLS_DIR/aapt" dump badging "$APK_PATH")"
+          grep -Fq "package: name='org.prahari.app'" <<< "$BADGING"
+          grep -Fq "sdkVersion:'24'" <<< "$BADGING"
+          grep -Fq "targetSdkVersion:'34'" <<< "$BADGING"
+
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$APKANALYZER"
+          test "$("$APKANALYZER" manifest application-id "$APK_PATH")" = "org.prahari.app"
+          test "$("$APKANALYZER" manifest min-sdk "$APK_PATH")" = "24"
+          test "$("$APKANALYZER" manifest target-sdk "$APK_PATH")" = "34"
+          "$APKANALYZER" manifest print "$APK_PATH" | grep -Fq 'android:usesCleartextTraffic="false"'
+
+          sha256sum "$APK_PATH" > "$APK_PATH.sha256"
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: swasti-mobile-apks
-          path: dist/apks/*.apk
-          retention-days: 30
+          name: prahari-unified-release
+          path: |
+            mobile/android/app/build/outputs/apk/unified/release/app-unified-release.apk
+            mobile/android/app/build/outputs/apk/unified/release/app-unified-release.apk.sha256
+          if-no-files-found: error
+          retention-days: 14

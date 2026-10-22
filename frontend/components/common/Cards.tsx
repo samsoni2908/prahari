@@ -64,7 +64,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             {unavailableText}
           </span>
         ) : (
-          <div className="text-2xl md:text-3xl font-extrabold text-[#182417] tracking-tight">
+          <div className="text-lg sm:text-2xl md:text-3xl font-extrabold text-[#182417] tracking-tight [overflow-wrap:anywhere]">
             {value}
           </div>
         )}

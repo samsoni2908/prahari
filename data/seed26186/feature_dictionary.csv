@@ -1,0 +1,18 @@
+feature,source_table,lookback,description,available_at_prediction_date
+duty_hours_7d,duties,7d,Rolling sum of duty hours ending at prediction_date.,True
+duty_hours_30d,duties,30d,Rolling sum of duty hours ending at prediction_date.,True
+night_duty_count_14d,duties,14d,Count of night-shift duties.,True
+night_duty_ratio_30d,duties,30d,Night duties / all duties in window; null if no duties.,True
+consecutive_duty_days,duties,through t,Run length of consecutive on-duty days ending at t.,True
+min_rest_hours_14d,rest_records,14d,Minimum observed rest_hours; null if no observations.,True
+avg_rest_hours_30d,rest_records,30d,Mean observed rest_hours; null if no observations.,True
+quick_return_count_30d,rest_records,30d,Count of rest_gap_hours < 11h.,True
+deployment_days_30d,deployments,30d,Days of overlap between deployments (started by t) and window.,True
+training_days_30d,training,30d,Days of overlap between training (started by t) and window.,True
+staffing_ratio_7d,staffing,7d,"Unit available_strength/required_strength, most recent record <= t.",True
+workload_change_14v14,duties,28d,Percent change: last 14 days vs prior 14 days duty hours.,True
+ewma_workload,duties,through t,"EWMA(lambda=0.20) of daily duty hours, through t.",True
+baseline_z_workload,duties,"prior 56d, excl. t",Robust z-score vs person's median/MAD.,True
+leave_frequency_90d,leave_records,90d,Count of leave episodes with start_date in window.,True
+leave_gap_variability_90d,leave_records,90d,Std-dev of gaps between leave starts (needs >=3).,True
+peer_deviation_workload,duties (peer),"30d, same unit",Robust z of duty_hours_30d vs >=8 active same-unit peers; null otherwise.,True

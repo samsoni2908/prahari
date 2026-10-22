@@ -1,0 +1,21 @@
+id,skill_code,skill_name,category,is_active
+216e4f00-8438-c98a-d4ba-832cd21ed70f,SK01,First Aid,MEDICAL,True
+f4890efd-6b0c-ae9e-ab8b-77e617df3706,SK02,Heavy Vehicle Driving,LOGISTICS,True
+080d2537-f7fc-5495-1b74-1e7c625c5cc7,SK03,Communications Operator,SIGNALS,True
+0c7264d7-ee1f-aecd-c56d-67898f24f00b,SK04,Weapons Handling,OPERATIONS,True
+cd0222c9-fc64-d875-1422-a432253c8c20,SK05,IED Awareness,OPERATIONS,True
+7bed8bbe-012f-70c1-2ccf-f5aa6e607826,SK06,Mountain Warfare,OPERATIONS,True
+158a7047-bacb-b753-7447-cea39a96ed8d,SK07,Jungle Warfare,OPERATIONS,True
+f124ce9e-da3f-f079-dfa7-809fe77e1913,SK08,Cyber Awareness,SIGNALS,True
+e4d44ce5-a8bf-14d1-edc6-412956ce9d37,SK09,Convoy Escort,OPERATIONS,True
+b0e42ef0-d689-a638-43e5-9f04fa5216b5,SK10,Crowd Control,OPERATIONS,True
+31316008-7951-b36e-8184-ee70508ef6d5,SK11,Canine Handling,OPERATIONS,True
+1c04bd6b-1089-3777-5cca-0b134e449e84,SK12,Medical Assistant,MEDICAL,True
+3342dec1-26d6-3e04-fecb-2c40ab4a743f,SK13,Signals Maintenance,SIGNALS,True
+51976a1f-e792-78c1-e663-40cb6f35e975,SK14,Logistics Management,LOGISTICS,True
+df65bb7b-fe64-f353-5d3f-04c2a1eeddef,SK15,Intelligence Analysis,INTELLIGENCE,True
+f58efe58-3ce8-a132-3c69-1cbaa22baa37,SK16,Firearms Instructor,TRAINING,True
+79be1683-ac97-96d7-906c-13550f55a2ec,SK17,Physical Training Instructor,TRAINING,True
+37a79f7d-f287-5db9-a952-2b1702cfcee6,SK18,Bomb Disposal Support,OPERATIONS,True
+3edbc6dc-42cd-4cac-6940-88bafa7973a8,SK19,Riot Control,OPERATIONS,True
+093e7ca4-5edd-d3ca-7594-12eba021a126,SK20,Border Patrol,OPERATIONS,True

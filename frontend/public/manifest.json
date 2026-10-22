@@ -1,11 +1,11 @@
 {
-  "name": "PRAHARI Personnel Stress and Welfare Monitoring",
+  "name": "PRAHARI Operational Workload and Welfare Support",
   "short_name": "PRAHARI",
-  "description": "AI-powered personnel stress and welfare monitoring system for uniformed services",
+  "description": "Privacy-preserving operational workload and recovery decision support",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#07111F",
-  "theme_color": "#07111F",
+  "background_color": "#FAF9F5",
+  "theme_color": "#2C5127",
   "icons": [
     {
       "src": "/icon.svg",

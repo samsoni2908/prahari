@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Shield,
   LayoutDashboard,
@@ -14,7 +14,6 @@ import {
   Calendar,
   Briefcase,
   TrendingUp,
-  FileText,
   Search,
   AlertTriangle,
   Menu,
@@ -26,33 +25,25 @@ import {
   Clock,
   UserCheck,
   ChevronRight,
-  ShieldAlert,
 } from "lucide-react";
-import { authApi, getStoredRole, getStoredUser } from "@/lib/api";
+import { useAuth, roleRouteMap } from "@/lib/auth-context";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [activeRole, setActiveRole] = useState<string>("COMMANDER");
+  const { user: currentUser, isLoading, logout } = useAuth();
+  const activeRole = currentUser?.role ?? "";
 
   useEffect(() => {
-    const role = getStoredRole();
-    const user = getStoredUser();
-    if (role) setActiveRole(role);
-    if (user) setCurrentUser(user);
-
-    // If pathname implies role, align
-    if (pathname.startsWith("/commander")) setActiveRole("COMMANDER");
-    else if (pathname.startsWith("/welfare")) setActiveRole("WELFARE_OFFICER");
-    else if (pathname.startsWith("/personnel")) setActiveRole("PERSONNEL");
-    else if (pathname.startsWith("/admin")) setActiveRole("ADMIN");
-  }, [pathname]);
+    if (pathname === "/" || pathname === "/login" || isLoading) return;
+    if (!currentUser) router.replace("/login");
+    else if (!pathname.startsWith(roleRouteMap[currentUser.role])) router.replace(roleRouteMap[currentUser.role]);
+  }, [pathname, currentUser, isLoading, router]);
 
   const handleLogout = async () => {
-    await authApi.logout();
-    router.push("/login");
+    await logout();
   };
 
   // If on landing or login page, render clean container without dashboard sidebar
@@ -65,6 +56,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (isLoading || !currentUser || !pathname.startsWith(roleRouteMap[currentUser.role])) {
+    return <div className="min-h-screen bg-[#FBFBF8]" aria-label="Verifying session" />;
+  }
+
   // Navigation items strictly per product role
   const getNavItems = () => {
     switch (activeRole) {
@@ -75,31 +70,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           { name: "Deployments", href: "/personnel?tab=deployment", icon: Briefcase },
           { name: "Leave & Rest", href: "/personnel?tab=leave", icon: Calendar },
           { name: "Voluntary Self-Check", href: "/personnel?tab=wellbeing", icon: Activity },
-          { name: "Strain & Trend", href: "/personnel?tab=risk", icon: TrendingUp },
+          { name: "Strain & Trend", href: "/personnel?tab=dashboard", icon: TrendingUp },
           { name: "Support Requests", href: "/personnel?tab=support", icon: HeartHandshake },
           { name: "Privacy Ledger", href: "/personnel?tab=privacy", icon: Lock },
         ];
       case "COMMANDER":
         return [
           { name: "Operational Suite", href: "/commander", icon: LayoutDashboard },
-          { name: "Unit Overview", href: "/commander?tab=unit", icon: Users },
+          { name: "Unit Overview", href: "/commander?tab=overview", icon: Users },
           { name: "Personnel Status", href: "/commander?tab=personnel", icon: UserCheck },
+          { name: "Operational Alerts", href: "/commander?tab=alerts", icon: AlertTriangle },
+          { name: "BALANCE Scenarios", href: "/commander?tab=scenarios", icon: Sliders },
           { name: "Deployment Load", href: "/commander?tab=deployments", icon: Briefcase },
           { name: "Leave & Roster", href: "/commander?tab=leave", icon: Calendar },
           { name: "Workload Strain", href: "/commander?tab=workload", icon: Activity },
           { name: "WSI Risk Trends", href: "/commander?tab=trends", icon: TrendingUp },
-          { name: "Readiness Reports", href: "/commander?tab=reports", icon: FileText },
         ];
       case "WELFARE_OFFICER":
         return [
           { name: "Welfare Dashboard", href: "/welfare", icon: LayoutDashboard },
           { name: "Personnel Search", href: "/welfare?tab=search", icon: Search },
           { name: "Active Cases", href: "/welfare?tab=cases", icon: HeartHandshake },
-          { name: "Risk Monitor", href: "/welfare?tab=risk", icon: TrendingUp },
-          { name: "Assessments", href: "/welfare?tab=assessments", icon: Activity },
-          { name: "Alerts & Signals", href: "/welfare?tab=alerts", icon: AlertTriangle },
-          { name: "Welfare Actions", href: "/welfare?tab=actions", icon: ShieldAlert },
-          { name: "Audit Reports", href: "/welfare?tab=reports", icon: FileText },
         ];
       case "ADMIN":
         return [
@@ -107,6 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           { name: "User Accounts", href: "/admin?tab=users", icon: Users },
           { name: "Personnel Master", href: "/admin?tab=personnel", icon: UserCheck },
           { name: "Unit Master", href: "/admin?tab=units", icon: Briefcase },
+          { name: "Skills", href: "/admin?tab=skills", icon: CheckCircle2 },
           { name: "Data Health", href: "/admin?tab=data", icon: Database },
           { name: "Model Governance", href: "/admin?tab=system", icon: Sliders },
           { name: "Policy Config", href: "/admin?tab=settings", icon: Settings },
@@ -117,6 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = getNavItems();
+  const currentLocation = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
 
   const getRoleBadge = () => {
     switch (activeRole) {
@@ -188,12 +181,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Navigation list */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isExact = pathname === item.href;
+            const isExact = currentLocation === item.href;
             const Icon = item.icon;
             return (
               <Link
                 key={item.name}
                 href={item.href}
+                aria-current={isExact ? "page" : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                   isExact
                     ? "bg-[#2C5127] text-white border border-[#46723F] shadow-sm font-semibold"
@@ -225,7 +219,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="p-3.5 border-t border-[#244320] bg-[#142612]">
           <div className="flex items-center gap-2 text-[10px] text-[#A6C3A0]">
             <Lock className="h-3 w-3 text-[#22C55E] shrink-0" />
-            <span className="truncate font-mono">Row-Level Privacy Active</span>
+            <span className="truncate font-mono">Server-Scoped Privacy Active</span>
           </div>
         </div>
       </aside>
@@ -252,7 +246,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-xs text-[#677766] hidden sm:inline border-l border-[#CFDDCE] pl-2.5">
                 Session:{" "}
                 <strong className="text-[#182417]">
-                  {currentUser?.username || "demo_session"}
+                  {currentUser.username}
                 </strong>
               </span>
             </div>
@@ -261,12 +255,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[11px] text-[#15803D] font-mono font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-ping" />
-              <span>LIVE SYSTEM</span>
+              <span>AUTHENTICATED SESSION</span>
             </div>
 
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF9F5] hover:bg-[#F3F2EB] border border-[#CFDDCE] text-xs font-medium text-[#3B4B3A] transition-colors"
+              aria-label="Log out"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Logout</span>
