@@ -42,11 +42,31 @@ async def test_session_rotation_replay_idle_absolute_and_logout(monkeypatch):
             user_id = user.id
 
         origin = settings.cors_origins[0]
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=origin) as client:
             bootstrap = await client.get("/api/v1/auth/csrf?for_login=true")
+            bootstrap_cookie = bootstrap.headers["set-cookie"].lower()
+            bootstrap_attrs = {part.strip() for part in bootstrap_cookie.split(";")[1:]}
+            secure_expected = settings.ENVIRONMENT.lower() != "development"
+            assert ("secure" in bootstrap_attrs) is secure_expected
+            assert "samesite=lax" in bootstrap_attrs
+            assert "path=/api/v1" in bootstrap_attrs
+            assert not any(attribute.startswith("domain=") for attribute in bootstrap_attrs)
             login = await client.post("/api/v1/auth/login", json={"username": username, "password": password},
                                       headers={"Origin": origin, "X-CSRF-Token": bootstrap.json()["csrf_token"]})
             assert login.status_code == 200
+            session_cookies = login.headers.get_list("set-cookie")
+            expected_paths = {
+                "prahari_session": "/api/v1",
+                "prahari_refresh": "/api/v1/auth",
+                "prahari_csrf": "/api/v1",
+            }
+            for cookie_name, expected_path in expected_paths.items():
+                cookie = next(item.lower() for item in session_cookies if item.startswith(cookie_name + "="))
+                attributes = {part.strip() for part in cookie.split(";")[1:]}
+                assert ("secure" in attributes) is secure_expected
+                assert "samesite=lax" in attributes
+                assert f"path={expected_path}" in attributes
+                assert not any(attribute.startswith("domain=") for attribute in attributes)
             token = login.json()["access_token"]
             claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
                                 issuer="prahari", audience="prahari-api")
